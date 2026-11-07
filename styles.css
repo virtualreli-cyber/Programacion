@@ -1,0 +1,2079 @@
+/* ==========================================================================
+   PROGRAMACIÓN DOCENTE UNIFICADA 2026-2027 — SISTEMA DE DISEÑO CORPORATIVO
+   Estética corporativa, sobria, compacta, sin solapamientos ni desbordes.
+   ========================================================================== */
+
+:root {
+  /* Paleta Corporativa Institucional */
+  --bg-app: #f1f5f9;
+  --bg-surface: #ffffff;
+  --bg-subtle: #f8fafc;
+  --bg-muted: #e2e8f0;
+
+  --topbar-bg: #0f172a;
+  --topbar-surface: #1e293b;
+  --topbar-border: #334155;
+  --topbar-text: #f8fafc;
+  --topbar-muted: #94a3b8;
+
+  --text-main: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+
+  --border-light: #e2e8f0;
+  --border-medium: #cbd5e1;
+  --border-strong: #94a3b8;
+
+  /* Acento Corporativo Principal */
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-soft: #eff6ff;
+  --primary-border: #bfdbfe;
+
+  /* Identidad por Centro Educativo */
+  --riba-main: #dc2626;
+  --riba-dark: #991b1b;
+  --riba-soft: #fef2f2;
+  --riba-border: #fecaca;
+
+  --mani-main: #0284c7;
+  --mani-dark: #075985;
+  --mani-soft: #f0f9ff;
+  --mani-border: #bae6fd;
+
+  /* Estados Semánticos */
+  --success: #16a34a;
+  --success-soft: #f0fdf4;
+  --success-border: #bbf7d0;
+
+  --warning: #d97706;
+  --warning-soft: #fffbeb;
+  --warning-border: #fde68a;
+
+  --danger: #e11d48;
+  --danger-soft: #fff1f2;
+  --danger-border: #fecdd3;
+
+  --purple: #7c3aed;
+  --purple-soft: #f5f3ff;
+  --purple-border: #ddd6fe;
+
+  --teal: #0d9488;
+  --teal-soft: #f0fdfa;
+  --teal-border: #99f6e4;
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.16);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  block-size: 100%;
+  inline-size: 100%;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-main);
+  background-color: var(--bg-app);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+/* ==========================================================================
+   ESTRUCTURA GENERAL DE LA APLICACIÓN
+   ========================================================================== */
+
+.app-shell {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  block-size: 100dvh;
+  inline-size: 100%;
+  overflow: clip;
+}
+
+/* ==========================================================================
+   CABECERA CORPORATIVA UNIFICADA (TOPBAR)
+   ========================================================================== */
+
+.corporate-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-block: 6px;
+  padding-inline: 12px;
+  background: var(--topbar-bg);
+  color: var(--topbar-text);
+  border-block-end: 1px solid var(--topbar-border);
+  min-block-size: 46px;
+  z-index: 40;
+  flex-wrap: wrap;
+}
+
+.topbar-left,
+.topbar-center,
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-inline-size: 0;
+}
+
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+}
+
+.brand-badge .brand-year {
+  font-size: 10px;
+  font-weight: 700;
+  color: #93c5fd;
+  background: rgba(37, 99, 235, 0.35);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+/* Conmutador Principal: PLANNER vs TAREAS */
+.main-module-switch {
+  display: inline-flex;
+  align-items: center;
+  background: var(--topbar-surface);
+  padding: 3px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--topbar-border);
+  gap: 2px;
+}
+
+.module-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--topbar-muted);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.module-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.module-btn.active {
+  background: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.module-badge-dot {
+  inline-size: 7px;
+  block-size: 7px;
+  border-radius: 50%;
+  background: #fbbf24;
+  display: none;
+}
+
+.module-badge-dot.visible {
+  display: inline-block;
+}
+
+/* Pestañas de Vista (Sub-navegación compacta) */
+.view-tabs-group {
+  display: inline-flex;
+  align-items: center;
+  background: var(--topbar-surface);
+  padding: 3px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--topbar-border);
+  gap: 2px;
+}
+
+.view-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #cbd5e1;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.view-tab-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.view-tab-btn.active {
+  background: #334155;
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+/* Navegador Compartido de Semana en Topbar */
+.week-nav-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--topbar-surface);
+  padding: 2px 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--topbar-border);
+}
+
+.icon-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 26px;
+  block-size: 26px;
+  border-radius: var(--radius-xs);
+  color: #cbd5e1;
+  font-size: 12px;
+  transition: all 0.15s ease;
+}
+
+.icon-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.icon-nav-btn.is-active-shortcut {
+  background: rgba(37, 99, 235, 0.35);
+  color: #93c5fd;
+  border: 1px solid rgba(147, 197, 253, 0.35);
+}
+
+.week-selector-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.04);
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.week-selector-pill:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.week-selector-pill .week-range-sub {
+  color: #94a3b8;
+  font-weight: 500;
+  font-size: 11px;
+}
+
+/* Herramientas Derecha (Iconos Compactos) */
+.search-compact-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.search-compact-input {
+  inline-size: 145px;
+  block-size: 28px;
+  padding-inline: 26px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--topbar-surface);
+  border: 1px solid var(--topbar-border);
+  color: #ffffff;
+  font-size: 11.5px;
+  transition: inline-size 0.2s ease, border-color 0.15s ease;
+}
+
+.search-compact-input::placeholder {
+  color: var(--topbar-muted);
+}
+
+.search-compact-input:focus {
+  outline: none;
+  inline-size: 200px;
+  border-color: #60a5fa;
+}
+
+.search-compact-icon {
+  position: absolute;
+  inset-inline-start: 8px;
+  font-size: 11px;
+  color: var(--topbar-muted);
+  pointer-events: none;
+}
+
+.top-icon-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-inline-size: 28px;
+  block-size: 28px;
+  padding-inline: 7px;
+  border-radius: var(--radius-sm);
+  background: var(--topbar-surface);
+  border: 1px solid var(--topbar-border);
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.top-icon-btn:hover:not(:disabled) {
+  background: #334155;
+  color: #ffffff;
+  border-color: #475569;
+}
+
+.top-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.top-icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 16px;
+  block-size: 16px;
+  padding-inline: 4px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  background: #f59e0b;
+  color: #0f172a;
+}
+
+.cloud-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  block-size: 28px;
+  padding-inline: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--topbar-surface);
+  border: 1px solid var(--topbar-border);
+  color: #e2e8f0;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.cloud-dot {
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.cloud-dot.online {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+}
+
+.cloud-dot.syncing {
+  background: #f59e0b;
+}
+
+.cloud-dot.error {
+  background: #ef4444;
+}
+
+/* ==========================================================================
+   BARRA FLOTANTE DE PORTAPAPELES DE REPLICACIÓN (CUANDO HAY CLASE COPIADA)
+   ========================================================================== */
+
+.replication-clipboard-bar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 14px;
+  background: linear-gradient(90deg, #1e3a8a 0%, #1d4ed8 100%);
+  color: #ffffff;
+  border-block-end: 1px solid #3b82f6;
+  font-size: 12px;
+  z-index: 35;
+  flex-wrap: wrap;
+}
+
+.replication-clipboard-bar.active {
+  display: flex;
+}
+
+.clip-info-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-inline-size: 0;
+  flex: 1 1 280px;
+}
+
+.clip-badge-pill {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 7px;
+  border-radius: var(--radius-xs);
+  font-weight: 800;
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.clip-title-preview {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: clip;
+  text-overflow: ellipsis;
+}
+
+.clip-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.clip-mode-select {
+  background: rgba(15, 23, 42, 0.45);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-xs);
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.clip-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: var(--radius-xs);
+  background: #ffffff;
+  color: #1e3a8a;
+  font-weight: 700;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.clip-action-btn:hover {
+  background: #eff6ff;
+}
+
+.clip-clear-btn {
+  padding: 3px 7px;
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.clip-clear-btn:hover {
+  background: rgba(239, 68, 68, 0.8);
+}
+
+/* ==========================================================================
+   CONTENEDOR PRINCIPAL DE VISTAS
+   ========================================================================== */
+
+.main-workspace {
+  position: relative;
+  block-size: 100%;
+  inline-size: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ==========================================================================
+   1. VISTA SEMANAL DEL PLANNER (ALINEADA POR FRANJAS HORARIAS)
+   ========================================================================== */
+
+.week-view-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  background: var(--bg-app);
+  position: relative;
+}
+
+.week-header-row {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 25;
+  display: grid;
+  grid-template-columns: 52px repeat(5, minmax(220px, 1fr));
+  background: var(--bg-surface);
+  border-block-end: 2px solid var(--border-medium);
+  box-shadow: var(--shadow-xs);
+}
+
+.sticky-header-cell {
+  padding: 6px 8px;
+  border-inline-end: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-inline-size: 0;
+}
+
+.sticky-header-cell.time-axis-corner {
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-subtle);
+}
+
+.sticky-header-cell.ribarroja {
+  background: linear-gradient(180deg, #fff1f2 0%, #ffffff 100%);
+  border-block-start: 3px solid var(--riba-main);
+}
+
+.sticky-header-cell.manises {
+  background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%);
+  border-block-start: 3px solid var(--mani-main);
+}
+
+.sticky-header-cell.libre {
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+  border-block-start: 3px solid var(--text-muted);
+}
+
+.sticky-header-cell.is-festivo {
+  background: linear-gradient(180deg, #fef3c7 0%, #fffbeb 100%);
+  border-block-start: 3px solid var(--warning);
+}
+
+.sticky-header-cell.is-today {
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+.header-day-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-inline-size: 0;
+}
+
+.header-day-name {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--text-main);
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: clip;
+  text-overflow: ellipsis;
+}
+
+.header-day-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.header-school-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.header-school-badge.ribarroja {
+  background: var(--riba-soft);
+  color: var(--riba-dark);
+  border: 1px solid var(--riba-border);
+}
+
+.header-school-badge.manises {
+  background: var(--mani-soft);
+  color: var(--mani-dark);
+  border: 1px solid var(--mani-border);
+}
+
+.header-school-badge.libre {
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+}
+
+.header-school-badge.festivo {
+  background: var(--warning-soft);
+  color: #92400e;
+  border: 1px solid var(--warning-border);
+}
+
+.day-hdr-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 22px;
+  block-size: 22px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-medium);
+  background: #ffffff;
+  font-size: 11px;
+  transition: all 0.12s ease;
+}
+
+.day-hdr-icon-btn:hover {
+  background: var(--bg-subtle);
+  border-color: var(--text-muted);
+}
+
+.day-hdr-icon-btn.active-festivo {
+  background: #fef3c7;
+  border-color: #f59e0b;
+}
+
+.day-hdr-icon-btn.active-evento {
+  background: #f3e8ff;
+  border-color: #a855f7;
+}
+
+.header-status-sub {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  white-space: nowrap;
+  overflow: clip;
+  text-overflow: ellipsis;
+}
+
+.header-status-sub.festivo {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.header-status-sub.evento {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+/* Rejilla de Cuerpo Semanal */
+.week-body-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: 52px repeat(5, minmax(220px, 1fr));
+  min-block-size: 640px;
+}
+
+.time-axis-column {
+  position: relative;
+  background: var(--bg-subtle);
+  border-inline-end: 1px solid var(--border-medium);
+  user-select: none;
+}
+
+.time-axis-hour {
+  position: absolute;
+  inset-inline: 0;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  transform: translateY(-7px);
+  padding-inline: 2px;
+}
+
+.time-axis-hour.hour-08 {
+  transform: translateY(2px);
+}
+
+.grid-hour-line {
+  position: absolute;
+  inset-inline: 52px 0;
+  border-block-start: 1px dashed var(--border-light);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.day-body-column {
+  position: relative;
+  border-inline-end: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.day-body-column.is-festivo {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(254, 243, 199, 0.25),
+    rgba(254, 243, 199, 0.25) 10px,
+    rgba(255, 255, 255, 0.4) 10px,
+    rgba(255, 255, 255, 0.4) 20px
+  );
+}
+
+/* Tarjetas de Sesión en Vista Semanal */
+.session-card {
+  position: absolute;
+  inset-inline: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  display: flex;
+  flex-direction: column;
+  overflow: clip;
+  z-index: 5;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.session-card:hover {
+  box-shadow: var(--shadow-md);
+  z-index: 10;
+}
+
+.session-card.ribarroja {
+  border-inline-start: 3.5px solid var(--riba-main);
+}
+
+.session-card.manises {
+  border-inline-start: 3.5px solid var(--mani-main);
+}
+
+.session-card.is-suspended-session {
+  background: #fffbeb;
+  border-color: #fcd34d;
+}
+
+/* Cabecera de Tarjeta Semanal (Sin solapamientos) */
+.card-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 3px 6px;
+  background: var(--bg-subtle);
+  border-block-end: 1px solid var(--border-light);
+  min-block-size: 24px;
+  flex-shrink: 0;
+}
+
+.card-top-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-inline-size: 0;
+  overflow: clip;
+}
+
+.card-course-badge {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+.session-card.ribarroja .card-course-badge {
+  color: var(--riba-dark);
+}
+
+.session-card.manises .card-course-badge {
+  color: var(--mani-dark);
+}
+
+.card-time-text {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.prep-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 17px;
+  block-size: 17px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.prep-icon-btn.is-prep {
+  background: var(--success-soft);
+  color: var(--success);
+  border: 1px solid var(--success-border);
+}
+
+.prep-icon-btn.is-unprep {
+  background: #ffffff;
+  color: var(--text-muted);
+  border: 1px solid var(--border-medium);
+}
+
+.card-top-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.card-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 20px;
+  block-size: 20px;
+  border-radius: var(--radius-xs);
+  font-size: 11px;
+  color: var(--text-secondary);
+  transition: background 0.12s ease;
+}
+
+.card-btn:hover {
+  background: var(--bg-muted);
+  color: var(--text-main);
+}
+
+.card-btn.paste-highlight {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border: 1px solid #93c5fd;
+}
+
+/* Banner de Día No Lectivo / Evento Especial en la Tarjeta */
+.card-suspended-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 2px 6px;
+  background: #fef3c7;
+  border-block-end: 1px solid #fde68a;
+  font-size: 10px;
+  font-weight: 700;
+  color: #92400e;
+  flex-shrink: 0;
+}
+
+.btn-manual-push-class {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  background: #ffffff;
+  border: 1px solid #f59e0b;
+  color: #b45309;
+  font-size: 9.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.btn-manual-push-class:hover {
+  background: #fffbeb;
+}
+
+/* Cuerpo Editable de la Tarjeta */
+.card-editable-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 6px;
+  flex: 1;
+  min-block-size: 0;
+}
+
+.card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-inline-size: 0;
+}
+
+.inline-field {
+  inline-size: 100%;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.inline-field:focus {
+  outline: none;
+  background: #ffffff;
+  border-color: var(--primary);
+}
+
+.inline-title {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--text-main);
+  padding: 1px 4px;
+  min-inline-size: 0;
+  flex: 1;
+}
+
+.session-type-pill {
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.session-type-pill.examen {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
+}
+
+.session-type-pill.trabajo {
+  background: var(--purple-soft);
+  color: var(--purple);
+  border: 1px solid var(--purple-border);
+}
+
+.session-type-pill.exposicion {
+  background: var(--teal-soft);
+  color: var(--teal);
+  border: 1px solid var(--teal-border);
+}
+
+.btn-postpone-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 20px;
+  block-size: 20px;
+  border-radius: var(--radius-xs);
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.btn-postpone-inline:hover {
+  background: var(--bg-muted);
+  color: var(--text-main);
+}
+
+.inline-content {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-secondary);
+  padding: 2px 4px;
+  resize: none;
+  overflow: hidden;
+  min-block-size: 68px;
+}
+
+/* Tres bloques inferiores sincronizados: Avisos, Educamos, Imprimir */
+.card-meta-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-block-start: auto;
+}
+
+.inline-meta-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 2px 4px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-light);
+  min-inline-size: 0;
+}
+
+.inline-meta-row.has-text.type-avisos {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.inline-meta-row.has-text.type-educamos {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.inline-meta-row.has-text.type-imprimir {
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+}
+
+.inline-meta-row.is-done {
+  background: var(--success-soft);
+  border-color: var(--success-border);
+  opacity: 0.88;
+}
+
+.meta-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 18px;
+  block-size: 18px;
+  border-radius: var(--radius-xs);
+  font-size: 10.5px;
+  flex-shrink: 0;
+  margin-block-start: 1px;
+}
+
+.meta-textarea {
+  flex: 1;
+  min-inline-size: 0;
+  border: none;
+  background: transparent;
+  font-size: 10.5px;
+  line-height: 1.3;
+  resize: none;
+  overflow: hidden;
+  min-block-size: 18px;
+  padding: 1px 2px;
+}
+
+.meta-textarea:focus {
+  outline: none;
+}
+
+.inline-meta-row.is-done .meta-textarea {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+/* Bloques estáticos (Patio, Comedor, Guardia, Lectura, Tiempo Libre) */
+.static-slot-block {
+  position: absolute;
+  inset-inline: 4px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border-medium);
+  background: rgba(248, 250, 252, 0.9);
+  padding: 3px 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  z-index: 3;
+  overflow: clip;
+}
+
+.static-slot-block.patio,
+.static-slot-block.comedor {
+  background: rgba(241, 245, 249, 0.85);
+}
+
+.static-slot-block.guardia {
+  background: rgba(254, 242, 242, 0.7);
+  border-color: #fecaca;
+}
+
+.static-slot-block.lectura {
+  background: rgba(240, 253, 244, 0.75);
+  border-color: #bbf7d0;
+}
+
+.static-slot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-inline-size: 0;
+}
+
+.slot-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: clip;
+  text-overflow: ellipsis;
+}
+
+.slot-time {
+  font-size: 9.5px;
+  color: var(--text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   2. VISTA REPLICAR CLASES (MATRIZ MENSUAL / GLOBAL DE TODOS LOS GRUPOS)
+   ========================================================================== */
+
+.matrix-view-container {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  inline-size: 100%;
+  overflow: hidden;
+  background: var(--bg-app);
+}
+
+.subview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--bg-surface);
+  border-block-end: 1px solid var(--border-medium);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.toolbar-cluster {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.filter-pill-group {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
+}
+
+.filter-pill-btn {
+  padding: 4px 9px;
+  border-radius: var(--radius-xs);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  transition: all 0.12s ease;
+}
+
+.filter-pill-btn:hover {
+  background: var(--bg-muted);
+}
+
+.filter-pill-btn.active {
+  background: var(--topbar-bg);
+  color: #ffffff;
+}
+
+.corporate-select {
+  block-size: 28px;
+  padding-inline: 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-medium);
+  background: var(--bg-surface);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.corporate-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  block-size: 28px;
+  padding-inline: 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-medium);
+  background: var(--bg-surface);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  transition: all 0.12s ease;
+}
+
+.corporate-btn:hover {
+  background: var(--bg-subtle);
+  border-color: var(--border-strong);
+}
+
+.corporate-btn.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+
+.corporate-btn.primary:hover {
+  background: var(--primary-hover);
+}
+
+/* Tabla Matriz de Grupos x Semanas */
+.matrix-table-scroll {
+  flex: 1;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  padding: 10px 14px;
+}
+
+.replicate-matrix-table {
+  inline-size: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+}
+
+.replicate-matrix-table thead th {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 15;
+  background: var(--topbar-bg);
+  color: #ffffff;
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+  border-block-end: 1px solid var(--topbar-border);
+  border-inline-end: 1px solid var(--topbar-border);
+  min-inline-size: 210px;
+}
+
+.replicate-matrix-table thead th.sticky-group-col {
+  inset-inline-start: 0;
+  z-index: 20;
+  min-inline-size: 170px;
+  max-inline-size: 185px;
+}
+
+.replicate-matrix-table thead th.is-current-week-col {
+  background: #1e3a8a;
+}
+
+.replicate-matrix-table tbody th.sticky-group-row-hdr {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 10;
+  background: var(--bg-surface);
+  padding: 8px 10px;
+  text-align: left;
+  border-inline-end: 2px solid var(--border-medium);
+  border-block-end: 1px solid var(--border-light);
+  vertical-align: top;
+}
+
+.replicate-matrix-table tbody tr.level-divider-row td,
+.replicate-matrix-table tbody tr.level-divider-row th {
+  background: var(--bg-muted);
+  padding: 4px 10px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-block-end: 1px solid var(--border-medium);
+}
+
+.replicate-matrix-table tbody td.matrix-td {
+  padding: 6px;
+  border-inline-end: 1px solid var(--border-light);
+  border-block-end: 1px solid var(--border-light);
+  vertical-align: top;
+  background: var(--bg-surface);
+  min-inline-size: 210px;
+}
+
+.replicate-matrix-table tbody td.matrix-td.is-suspended-td {
+  background: #fffbeb;
+}
+
+.replicate-matrix-table tbody td.matrix-td.is-copied-source {
+  background: #eff6ff;
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+.matrix-cell-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-block-size: 92px;
+}
+
+.matrix-cell-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  border-block-end: 1px solid var(--border-light);
+  padding-block-end: 3px;
+}
+
+.matrix-date-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.matrix-cell-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.matrix-mini-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 20px;
+  block-size: 20px;
+  padding-inline: 4px;
+  border-radius: var(--radius-xs);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+}
+
+.matrix-mini-btn:hover {
+  background: var(--bg-muted);
+  border-color: var(--border-medium);
+}
+
+.matrix-mini-btn.btn-paste-here {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #93c5fd;
+}
+
+.matrix-mini-btn.btn-paste-here:hover {
+  background: #bfdbfe;
+}
+
+.matrix-tema-title {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.matrix-act-snippet {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  line-height: 1.3;
+  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  line-clamp: 3;
+  overflow: clip;
+}
+
+.matrix-meta-pills {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+  margin-block-start: auto;
+}
+
+.mini-meta-tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  max-inline-size: 100%;
+  overflow: clip;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini-meta-tag.aviso {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.mini-meta-tag.educamos {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.mini-meta-tag.imprimir {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+/* ==========================================================================
+   3. VISTA BANCO DE SESIONES (POR CURSO Y TEMA)
+   ========================================================================== */
+
+.bank-view-container {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  inline-size: 100%;
+  overflow: hidden;
+  background: var(--bg-app);
+}
+
+.bank-content-scroll {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tema-card-block {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  overflow: clip;
+}
+
+.tema-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-subtle);
+  border-block-end: 1px solid var(--border-medium);
+  flex-wrap: wrap;
+}
+
+.tema-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-inline-size: 0;
+}
+
+.tema-title-text {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.tema-count-pill {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  border: 1px solid var(--primary-border);
+  white-space: nowrap;
+}
+
+.tema-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.tema-sessions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.bank-session-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-medium);
+  background: var(--bg-surface);
+  transition: box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+.bank-session-card:hover {
+  box-shadow: var(--shadow-sm);
+  border-color: var(--border-strong);
+}
+
+.bank-session-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  border-block-end: 1px solid var(--border-light);
+  padding-block-end: 5px;
+}
+
+.bank-session-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  background: var(--topbar-bg);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.bank-session-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.bank-session-tema {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.bank-session-act {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  white-space: pre-line;
+  line-height: 1.38;
+  flex: 1;
+}
+
+/* ==========================================================================
+   4. VISTA CALENDARIO ESCOLAR MENSUAL (SOLO LECTIVO/NO LECTIVO + EVENTO ESPECIAL)
+   ========================================================================== */
+
+.calendar-view-container {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  inline-size: 100%;
+  overflow: hidden;
+  background: var(--bg-app);
+}
+
+.cal-grid-scroll {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  padding: 12px 16px;
+}
+
+.cal-month-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(175px, 1fr)) repeat(2, minmax(95px, 0.55fr));
+  gap: 8px;
+}
+
+.cal-weekday-hdr {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--topbar-bg);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cal-weekday-hdr.ribarroja {
+  border-block-start: 3px solid var(--riba-main);
+}
+
+.cal-weekday-hdr.manises {
+  border-block-start: 3px solid var(--mani-main);
+}
+
+.cal-day-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-block-size: 132px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  box-shadow: var(--shadow-xs);
+}
+
+.cal-day-card.other-month {
+  opacity: 0.35;
+  background: var(--bg-subtle);
+  min-block-size: 80px;
+}
+
+.cal-day-card.weekend {
+  background: var(--bg-subtle);
+  min-block-size: 80px;
+}
+
+.cal-day-card.is-no-lectivo {
+  background: #fffbeb;
+  border-color: #f59e0b;
+}
+
+.cal-day-card.has-special-event {
+  background: #faf5ff;
+  border-color: #a855f7;
+}
+
+.cal-day-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.cal-day-num {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.cal-week-tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+}
+
+/* Los dos únicos botones de acción en cada día del calendario */
+.cal-two-actions-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.cal-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: var(--radius-xs);
+  font-size: 10px;
+  font-weight: 800;
+  border: 1px solid var(--border-medium);
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  transition: all 0.12s ease;
+}
+
+.cal-action-btn:hover {
+  background: var(--bg-muted);
+}
+
+.cal-action-btn.is-lectivo {
+  background: var(--success-soft);
+  color: var(--success);
+  border-color: var(--success-border);
+}
+
+.cal-action-btn.is-no-lectivo {
+  background: #fef3c7;
+  color: #b45309;
+  border-color: #f59e0b;
+}
+
+.cal-action-btn.has-evento {
+  background: #f3e8ff;
+  color: #6b21a8;
+  border-color: #c084fc;
+}
+
+.cal-event-pill {
+  padding: 3px 6px;
+  border-radius: var(--radius-xs);
+  background: #f3e8ff;
+  border: 1px solid #d8b4fe;
+  color: #581c87;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.cal-groups-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-block-start: auto;
+}
+
+.cal-grp-chip {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-medium);
+  color: var(--text-secondary);
+}
+
+.cal-grp-chip.suspended {
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
+  color: var(--danger);
+  text-decoration: line-through;
+}
+
+/* ==========================================================================
+   5. APARTADO TAREAS (CONTROL SEMANAL Y LARGO PLAZO)
+   ========================================================================== */
+
+.tareas-view-container {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  inline-size: 100%;
+  overflow: hidden;
+  background: var(--bg-app);
+}
+
+.tareas-table-scroll {
+  flex: 1;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  padding: 12px 16px;
+}
+
+.corporate-tasks-table {
+  inline-size: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+}
+
+.corporate-tasks-table thead th {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 15;
+  background: var(--topbar-bg);
+  color: #ffffff;
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  border-block-end: 1px solid var(--topbar-border);
+  border-inline-end: 1px solid var(--topbar-border);
+  white-space: nowrap;
+}
+
+.corporate-tasks-table thead th:first-child {
+  text-align: left;
+  inset-inline-start: 0;
+  z-index: 20;
+}
+
+.corporate-tasks-table tbody td,
+.corporate-tasks-table tbody th {
+  padding: 7px 10px;
+  border-block-end: 1px solid var(--border-light);
+  border-inline-end: 1px solid var(--border-light);
+  vertical-align: middle;
+}
+
+.corporate-tasks-table tbody th.group-row-th {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 8;
+  background: var(--bg-surface);
+  text-align: left;
+  min-inline-size: 215px;
+}
+
+.corporate-tasks-table tbody tr:hover td,
+.corporate-tasks-table tbody tr:hover th.group-row-th {
+  background: var(--bg-subtle);
+}
+
+.corporate-tasks-table tbody tr.school-section-row td {
+  background: var(--bg-muted);
+  font-weight: 800;
+  font-size: 11px;
+  color: var(--text-main);
+  padding: 6px 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.task-status-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.task-check-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-inline-size: 110px;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid var(--border-medium);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  transition: all 0.12s ease;
+}
+
+.task-check-btn:hover {
+  background: var(--bg-subtle);
+  border-color: var(--border-strong);
+}
+
+.task-check-btn.done {
+  background: var(--success-soft);
+  border-color: var(--success-border);
+  color: var(--success);
+}
+
+.task-check-btn.overdue {
+  background: var(--warning-soft);
+  border-color: #f59e0b;
+  color: #b45309;
+}
+
+.task-check-btn.print-pending-nextweek {
+  background: var(--purple-soft);
+  border-color: #c084fc;
+  color: #6b21a8;
+}
+
+.task-subtext-preview {
+  font-size: 10px;
+  color: var(--text-secondary);
+  max-inline-size: 185px;
+  text-align: center;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.notes-inline-input {
+  inline-size: 100%;
+  min-inline-size: 150px;
+  padding: 5px 8px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-medium);
+  background: var(--bg-subtle);
+  font-size: 11px;
+}
+
+.notes-inline-input:focus {
+  outline: none;
+  background: #ffffff;
+  border-color: var(--primary);
+}
+
+/* ==========================================================================
+   MODALES CORPORATIVOS Y TOASTS
+   ========================================================================== */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(2px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 100;
+}
+
+.modal-backdrop.open {
+  display: flex;
+}
+
+.modal-dialog-card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-medium);
+  box-shadow: var(--shadow-lg);
+  inline-size: min(640px, 96vw);
+  max-block-size: 90dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: clip;
+}
+
+.modal-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--topbar-bg);
+  color: #ffffff;
+}
+
+.modal-dialog-title {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.modal-close-x {
+  inline-size: 26px;
+  block-size: 26px;
+  border-radius: var(--radius-xs);
+  color: #cbd5e1;
+  font-size: 14px;
+}
+
+.modal-close-x:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.modal-dialog-body {
+  padding: 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg-subtle);
+  border-block-start: 1px solid var(--border-light);
+}
+
+.form-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-field-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.form-input,
+.form-textarea,
+.form-select {
+  inline-size: 100%;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-medium);
+  background: var(--bg-surface);
+  font-size: 12.5px;
+}
+
+.form-textarea {
+  min-block-size: 90px;
+  resize: vertical;
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.conflict-option-btn {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-medium);
+  background: var(--bg-surface);
+  text-align: left;
+  transition: all 0.12s ease;
+}
+
+.conflict-option-btn:hover {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+}
+
+.toast-notification {
+  position: fixed;
+  inset-block-end: 16px;
+  inset-inline-end: 16px;
+  padding: 9px 14px;
+  border-radius: var(--radius-md);
+  background: var(--topbar-bg);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.toast-notification.visible {
+  opacity: 1;
+  transform: translateY(0);
+}

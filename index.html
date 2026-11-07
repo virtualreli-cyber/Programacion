@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Programación Docente 26·27 — Planner &amp; Tareas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Firebase SDK (Realtime Database + Auth) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- ====================================================================
+         CABECERA CORPORATIVA UNIFICADA (PLANNER + TAREAS)
+         ==================================================================== -->
+    <header class="corporate-topbar">
+      <!-- Izquierda: Identidad + Selector de Módulo Principal -->
+      <div class="topbar-left">
+        <div class="brand-badge" title="Sistema Unificado de Programación y Control Docente 2026-2027">
+          <span>🏛️</span>
+          <span>PROGRAMACIÓN</span>
+          <span class="brand-year">26·27</span>
+        </div>
+
+        <nav class="main-module-switch" aria-label="Apartado principal">
+          <button type="button" id="btn-mod-planner" class="module-btn active" onclick="App.switchModule('planner')" title="Ir al Planner de Clases">
+            <span>📅</span>
+            <span>Planner</span>
+          </button>
+          <button type="button" id="btn-mod-tareas" class="module-btn" onclick="App.switchModule('tareas')" title="Ir al Control de Tareas y Preparación">
+            <span>✅</span>
+            <span>Tareas</span>
+            <span id="badge-tareas-pending" class="module-badge-dot" title="Hay impresiones o tareas pendientes"></span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Centro: Pestañas de Vista + Navegador de Semana Compartido -->
+      <div class="topbar-center">
+        <!-- Pestañas cuando PLANNER está activo -->
+        <div id="tabs-planner" class="view-tabs-group" role="tablist" aria-label="Vistas del Planner">
+          <button type="button" id="tab-planner-semanal" class="view-tab-btn active" onclick="App.switchPlannerView('semanal')" title="Horario semanal alineado por franjas">
+            <span>📅</span>
+            <span>Semanal</span>
+          </button>
+          <button type="button" id="tab-planner-replicar" class="view-tab-btn" onclick="App.switchPlannerView('replicar')" title="Cuadrícula global de todos los grupos y réplica rápida">
+            <span>👯</span>
+            <span>Replicar Clases</span>
+          </button>
+          <button type="button" id="tab-planner-banco" class="view-tab-btn" onclick="App.switchPlannerView('banco')" title="Banco de sesiones por curso y tema">
+            <span>📚</span>
+            <span>Banco de Sesiones</span>
+          </button>
+          <button type="button" id="tab-planner-calendario" class="view-tab-btn" onclick="App.switchPlannerView('calendario')" title="Calendario escolar mensual (Lectivo/No lectivo y Eventos)">
+            <span>🗓️</span>
+            <span>Calendario</span>
+          </button>
+        </div>
+
+        <!-- Pestañas cuando TAREAS está activo -->
+        <div id="tabs-tareas" class="view-tabs-group" style="display: none;" role="tablist" aria-label="Vistas de Tareas">
+          <button type="button" id="tab-tareas-semanal" class="view-tab-btn active" onclick="App.switchTareasView('semanal')" title="Preparación semanal por grupo (Material, NEAE, Imprimir, Educamos)">
+            <span>📋</span>
+            <span>Control Semanal</span>
+          </button>
+          <button type="button" id="tab-tareas-largo" class="view-tab-btn" onclick="App.switchTareasView('largo')" title="Tareas a largo plazo y configuración de perfiles NEAE">
+            <span>🎯</span>
+            <span>Largo Plazo y NEAE</span>
+          </button>
+        </div>
+
+        <!-- Selector compartido de Semana -->
+        <div id="shared-week-nav" class="week-nav-cluster">
+          <button type="button" class="icon-nav-btn" onclick="App.navigateWeek(-1)" title="Semana anterior (◀)">◀</button>
+          <button type="button" class="week-selector-pill" onclick="App.openWeekPickerModal()" title="Seleccionar semana del curso (1 a 44)">
+            <span id="top-week-title">Semana 10</span>
+            <span id="top-week-range" class="week-range-sub">02/11 - 06/11</span>
+          </button>
+          <button type="button" class="icon-nav-btn" onclick="App.navigateWeek(1)" title="Semana siguiente (▶)">▶</button>
+          <button type="button" id="btn-go-current-week" class="icon-nav-btn" onclick="App.goToCurrentCalendarWeek()" title="Ir a la semana actual de hoy (📍)">📍</button>
+          <button type="button" id="btn-go-next-week" class="icon-nav-btn" onclick="App.goToNextCalendarWeek()" title="Ir a la próxima semana (⏩)">⏩</button>
+        </div>
+      </div>
+
+      <!-- Derecha: Buscador + Herramientas Compactas por Iconos -->
+      <div class="topbar-right">
+        <div class="search-compact-wrap">
+          <span class="search-compact-icon">🔍</span>
+          <input type="search" id="global-search-input" class="search-compact-input" placeholder="Buscar tema o texto..." oninput="App.onGlobalSearch(this.value)" />
+        </div>
+
+        <button type="button" id="btn-undo" class="top-icon-btn" onclick="App.undo()" disabled title="Deshacer último cambio (Ctrl+Z)">↩️</button>
+        <button type="button" id="btn-redo" class="top-icon-btn" onclick="App.redo()" disabled title="Rehacer cambio (Ctrl+Y)">↪️</button>
+
+        <button type="button" id="btn-reserve-drawer" class="top-icon-btn" onclick="App.openReserveModal()" title="Cajón de Reserva (Clases resguardadas para no perder nunca información)">
+          <span>📦</span>
+          <span id="reserve-count-badge" class="top-icon-badge">0</span>
+        </button>
+
+        <button type="button" class="top-icon-btn" onclick="App.exportFullBackup()" title="Descargar Copia de Seguridad JSON (Planner + Tareas)">💾</button>
+        <button type="button" class="top-icon-btn" onclick="document.getElementById('backup-file-input').click()" title="Restaurar Copia de Seguridad JSON">📥</button>
+        <input type="file" id="backup-file-input" accept=".json" style="display: none;" onchange="App.importFullBackup(event)" />
+
+        <button type="button" id="btn-cloud-status" class="cloud-pill-btn" onclick="App.openCloudModal()" title="Estado de sincronización en tiempo real con Firebase">
+          <span id="cloud-status-dot" class="cloud-dot"></span>
+          <span>☁️</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ====================================================================
+         BARRA ACTIVA DE PORTAPAPELES DE REPLICACIÓN (VISIBLE AL COPIAR CLASE)
+         ==================================================================== -->
+    <div id="replication-clipboard-bar" class="replication-clipboard-bar">
+      <div class="clip-info-left">
+        <span class="clip-badge-pill">📋 CLASE EN PORTAPAPELES</span>
+        <span id="clip-source-desc" class="clip-title-preview"></span>
+      </div>
+      <div class="clip-actions-right">
+        <label for="clip-paste-mode" style="font-size: 11px; font-weight: 700;">Al pegar en destino ocupado:</label>
+        <select id="clip-paste-mode" class="clip-mode-select" onchange="App.setClipboardPasteMode(this.value)">
+          <option value="ask">🛡️ Preguntar opción segura</option>
+          <option value="cascade_forward">⏩ Desplazar en cascada (+1 sem)</option>
+          <option value="overwrite">🔄 Sustituir (guardar previa en Reserva)</option>
+        </select>
+        <button type="button" class="clip-action-btn" onclick="App.pasteToAllSameLevelInCurrentWeek()" title="Pegar esta clase en todos los grupos del mismo nivel en la semana actual">
+          ⚡ Pegar en todo el nivel (esta semana)
+        </button>
+        <button type="button" class="clip-clear-btn" onclick="App.clearClipboard()" title="Limpiar portapapeles de replicación">✕ Cerrar</button>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         ÁREA DE TRABAJO PRINCIPAL (RENDERIZADO DINÁMICO)
+         ==================================================================== -->
+    <main id="main-workspace" class="main-workspace"></main>
+  </div>
+
+  <!-- ======================================================================
+       MODAL 1: SELECTOR VISUAL DE SEMANAS (44 SEMANAS)
+       ====================================================================== -->
+  <div id="modal-week-picker" class="modal-backdrop" onclick="if(event.target===this) App.closeModal('modal-week-picker')">
+    <div class="modal-dialog-card" style="inline-size: min(820px, 96vw);">
+      <div class="modal-dialog-header">
+        <span class="modal-dialog-title">🗓️ Seleccionar Semana del Curso Escolar (2026-2027)</span>
+        <button type="button" class="modal-close-x" onclick="App.closeModal('modal-week-picker')">✕</button>
+      </div>
+      <div id="week-picker-body" class="modal-dialog-body" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 8px;"></div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL 2: EDICIÓN COMPLETA DE CLASE / SESIÓN
+       ====================================================================== -->
+  <div id="modal-edit-session" class="modal-backdrop" onclick="if(event.target===this) App.closeModal('modal-edit-session')">
+    <div class="modal-dialog-card" style="inline-size: min(680px, 96vw);">
+      <div class="modal-dialog-header">
+        <span id="edit-session-modal-title" class="modal-dialog-title">✏️ Editar Sesión</span>
+        <button type="button" class="modal-close-x" onclick="App.closeModal('modal-edit-session')">✕</button>
+      </div>
+      <div class="modal-dialog-body">
+        <div style="display: grid; grid-template-columns: 1fr 180px auto; gap: 10px; align-items: end;">
+          <div class="form-field-group">
+            <label class="form-field-label" for="edit-f-tema">Título / Tema de la Sesión</label>
+            <input type="text" id="edit-f-tema" class="form-input" placeholder="Ej. ¿Quiénes somos?" />
+          </div>
+          <div class="form-field-group">
+            <label class="form-field-label" for="edit-f-sesion">Tipo / Etiqueta</label>
+            <select id="edit-f-sesion" class="form-select">
+              <option value="">Clase lectiva normal</option>
+              <option value="Examen">📝 Examen / Prueba</option>
+              <option value="Trabajo">🚀 Proyecto / Trabajo</option>
+              <option value="Exposición">🎙️ Exposición</option>
+              <option value="Salida / Convivencia">🚌 Salida / Convivencia</option>
+              <option value="Festivo">🏖️ Festivo</option>
+              <option value="No Clase">🚫 Sin clase</option>
+            </select>
+          </div>
+          <div class="form-field-group">
+            <label class="form-field-label">Estado</label>
+            <button type="button" id="edit-f-prep-btn" class="corporate-btn" onclick="App.toggleModalPrepared()">✓ Preparada</button>
+          </div>
+        </div>
+
+        <div class="form-field-group">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap;">
+            <label class="form-field-label" for="edit-f-actividades">Contenido y Actividades de la Clase</label>
+            <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+              <button type="button" class="filter-pill-btn" onclick="App.insertSnippetInModal('• 📖 EXPLICACIÓN: ')">+ 📖 Explicación</button>
+              <button type="button" class="filter-pill-btn" onclick="App.insertSnippetInModal('• ✍️ TRABAJO DIARIO: ')">+ ✍️ Trabajo</button>
+              <button type="button" class="filter-pill-btn" onclick="App.insertSnippetInModal('• 📂 PORTFOLIO: ')">+ 📂 Portfolio</button>
+              <button type="button" class="filter-pill-btn" onclick="App.insertSnippetInModal('• 🚀 PROYECTO: ')">+ 🚀 Proyecto</button>
+              <button type="button" class="filter-pill-btn" onclick="App.insertSnippetInModal('• 📌 PENDIENTE: ')">+ 📌 Pendiente</button>
+            </div>
+          </div>
+          <textarea id="edit-f-actividades" class="form-textarea" style="min-block-size: 130px;" placeholder="Detalla la explicación, PPT, fichas, rutinas o proyectos..."></textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+          <div class="form-field-group">
+            <label class="form-field-label" for="edit-f-avisos" style="display: flex; align-items: center; justify-content: space-between;">
+              <span>📢 Avisos de clase</span>
+              <label style="font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; text-transform: none;">
+                <input type="checkbox" id="edit-f-aviso-dado" /> Dicho
+              </label>
+            </label>
+            <textarea id="edit-f-avisos" class="form-textarea" style="min-block-size: 68px;" placeholder="Avisos para el grupo..."></textarea>
+          </div>
+
+          <div class="form-field-group">
+            <label class="form-field-label" for="edit-f-educamos" style="display: flex; align-items: center; justify-content: space-between;">
+              <span>🏫 Educamos (Sync Tareas)</span>
+              <label style="font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; text-transform: none;">
+                <input type="checkbox" id="edit-f-educamos-dado" /> Subido
+              </label>
+            </label>
+            <textarea id="edit-f-educamos" class="form-textarea" style="min-block-size: 68px;" placeholder="Aviso en Educamos..."></textarea>
+          </div>
+
+          <div class="form-field-group">
+            <label class="form-field-label" for="edit-f-imprimir" style="display: flex; align-items: center; justify-content: space-between;">
+              <span>🖨️ Imprimir (Av. Sem. Ant.)</span>
+              <label style="font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; text-transform: none;">
+                <input type="checkbox" id="edit-f-imprimir-dado" /> Impreso
+              </label>
+            </label>
+            <textarea id="edit-f-imprimir" class="form-textarea" style="min-block-size: 68px;" placeholder="Ej. Ficha 1 (30 copias) — se marcará pendiente en Tareas la semana anterior"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-dialog-footer" style="justify-content: space-between;">
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+          <button type="button" class="corporate-btn" onclick="App.shiftSingleCourseCascadeFromModal(-1)" title="Desplazar esta clase y anteriores 1 semana hacia atrás (-1)">⏪ Cascada -1</button>
+          <button type="button" class="corporate-btn" onclick="App.shiftSingleCourseCascadeFromModal(1)" title="Desplazar esta clase y siguientes 1 semana hacia adelante (+1)">⏩ Cascada +1</button>
+          <button type="button" class="corporate-btn" style="color: var(--danger); border-color: var(--danger-border);" onclick="App.sendModalSessionToReserveAndClear()" title="Guardar contenido en Cajón de Reserva y vaciar hueco">📦 A Reserva y vaciar</button>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="corporate-btn" onclick="App.closeModal('modal-edit-session')">Cancelar</button>
+          <button type="button" class="corporate-btn primary" onclick="App.saveEditSessionModal()">💾 Guardar Cambios</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL 3: RESOLUCIÓN SEGURA DE CONFLICTO AL COPIAR / MOVER CLASES
+       ====================================================================== -->
+  <div id="modal-paste-conflict" class="modal-backdrop" onclick="if(event.target===this) App.closeModal('modal-paste-conflict')">
+    <div class="modal-dialog-card">
+      <div class="modal-dialog-header">
+        <span class="modal-dialog-title">🛡️ Destino con Clase Existente — Elige Opción Segura</span>
+        <button type="button" class="modal-close-x" onclick="App.closeModal('modal-paste-conflict')">✕</button>
+      </div>
+      <div id="paste-conflict-body" class="modal-dialog-body"></div>
+      <div class="modal-dialog-footer">
+        <button type="button" class="corporate-btn" onclick="App.closeModal('modal-paste-conflict')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL 4: CALENDARIO ESCOLAR — DÍA LECTIVO/NO LECTIVO Y EVENTO ESPECIAL
+       ====================================================================== -->
+  <div id="modal-calendar-event" class="modal-backdrop" onclick="if(event.target===this) App.closeModal('modal-calendar-event')">
+    <div class="modal-dialog-card" style="inline-size: min(520px, 96vw);">
+      <div class="modal-dialog-header">
+        <span id="cal-modal-date-title" class="modal-dialog-title">🗓️ Configurar Día Escolar</span>
+        <button type="button" class="modal-close-x" onclick="App.closeModal('modal-calendar-event')">✕</button>
+      </div>
+      <div id="cal-modal-body" class="modal-dialog-body"></div>
+      <div class="modal-dialog-footer" style="justify-content: space-between;">
+        <button type="button" id="btn-cal-clear-event" class="corporate-btn" style="color: var(--danger);" onclick="App.clearCalendarDayConfig()">🗑️ Restablecer día normal</button>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="corporate-btn" onclick="App.closeModal('modal-calendar-event')">Cancelar</button>
+          <button type="button" class="corporate-btn primary" onclick="App.saveCalendarDayConfig()">💾 Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL 5: PROGRAMAR TEMA O SESIÓN DESDE EL BANCO DE SESIONES
+       ====================================================================== -->
+  <div id="modal-bank-deploy" class="modal-backdrop" onclick="if(event.target===this) App.closeModal('modal-bank-deploy')">
+    <div class="modal-dialog-card" style="inline-size: min(680px, 96vw);">
+      <div class="modal-dialog-header">
+        <span id="bank-deploy-title" class="modal-dialog-title">📦 Programar en Grupos</span>
+        <button type="button" class="modal-close-x" onclick="App.closeModal('modal-bank-deploy')">✕</button>
+      </div>
+      <div id="bank-deploy-body" class="modal-dialog-body"></div>
+      <div class="modal-dialog-footer">
+        <button type="button" class="corporate-btn" onclick="App.closeModal('modal-bank-deploy')">Cancelar</button>
+        <button type="button" class="corporate-btn primary" onclick="App.confirmBankDeploy()">🚀 Aplicar Programación</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL 6: CREAR / EDITAR SESIÓN O TEMA EN EL BANCO DE SESIONES
+       ====================================================================== -->
+  <div id="modal-bank-edit" class="modal-backdrop" onclick="if(event.target===this) App.closeModal('modal-bank-edit')">
+    <div class="modal-dialog-card" style="inline-size: min(600px, 96vw);">
+      <div class="modal-dialog-header">
+        <span id="bank-edit-title" class="modal-dialog-title">✏️ Editar en Banco de Sesiones</span>
+        <button type="button" class="modal-close-x" onclick="App.closeModal('modal-bank-edit')">✕</button>
+      </div>
+      <div id="bank-edit-body" class="modal-dialog-body"></div>
+      <div class="modal-dialog-footer">
+        <button type="button" class="corporate-btn" onclick="App.closeModal('modal-bank-edit')">Cancelar</button>
+        <button type="button" class="corporate-btn primary" onclick="App.saveBankEditModal()">💾 Guardar en Banco</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL 7: APLAZAR LO PENDIENTE A LA SIGUIENTE SESIÓN LECTIVA (⏩)
+       ====================================================================== -->
+  <div id="modal-postpone-content" class="modal-backdrop" onclick="if(event.target===this) App.closeModal('modal-postpone-content')">
+    <div class="modal-dialog-card" style="inline-size: min(560px, 96vw);">
+      <div class="modal-dialog-header">
+        <span class="modal-dialog-title">⏩ Pasar Contenido Pendiente o Aplazar Sesión</span>
+        <button type="button" class="modal-close-x" onclick="App.closeModal('modal-postpone-content')">✕</button>
+      </div>
+      <div id="postpone-modal-body" class="modal-dialog-body"></div>
+      <div class="modal-dialog-footer">
+        <button type="button" class="corporate-btn" onclick="App.closeModal('modal-postpone-content')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL 8: CAJÓN DE RESERVA (SEGURIDAD TOTAL CERO PÉRDIDA)
+       ====================================================================== -->
+  <div id="modal-reserve-drawer" class="modal-backdrop" onclick="if(event.target===this) App.closeModal('modal-reserve-drawer')">
+    <div class="modal-dialog-card" style="inline-size: min(680px, 96vw);">
+      <div class="modal-dialog-header">
+        <span class="modal-dialog-title">📦 Cajón de Reserva — Clases Resguardadas</span>
+        <button type="button" class="modal-close-x" onclick="App.closeModal('modal-reserve-drawer')">✕</button>
+      </div>
+      <div id="reserve-drawer-body" class="modal-dialog-body"></div>
+      <div class="modal-dialog-footer">
+        <button type="button" class="corporate-btn" onclick="App.closeModal('modal-reserve-drawer')">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL 9: SINCRONIZACIÓN EN LA NUBE (FIREBASE) Y COPIAS DE SEGURIDAD
+       ====================================================================== -->
+  <div id="modal-cloud-sync" class="modal-backdrop" onclick="if(event.target===this) App.closeModal('modal-cloud-sync')">
+    <div class="modal-dialog-card" style="inline-size: min(480px, 96vw);">
+      <div class="modal-dialog-header">
+        <span class="modal-dialog-title">☁️ Sincronización Firebase y Copias de Seguridad</span>
+        <button type="button" class="modal-close-x" onclick="App.closeModal('modal-cloud-sync')">✕</button>
+      </div>
+      <div id="cloud-modal-body" class="modal-dialog-body"></div>
+      <div class="modal-dialog-footer">
+        <button type="button" class="corporate-btn" onclick="App.closeModal('modal-cloud-sync')">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast de Notificación -->
+  <div id="app-toast" class="toast-notification" role="status" aria-live="polite"></div>
+
+  <!-- Scripts de Datos y Lógica de Aplicación -->
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
