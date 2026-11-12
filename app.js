@@ -2228,23 +2228,38 @@
   // REGLA CLAVE DEL USUARIO: Lo que se pone en "Imprimir" de una clase (en Sem. W+1)
   // se marca como pendiente de imprimir la semana de antes (en Sem. W).
   // Además, si en la propia Sem. W quedó algo de "Imprimir" sin marcar, avisa como urgente.
+  // Determina a qué semana de clase del Planner se vincula la columna de Fotocopias/Impresión:
+  // - Si la clase de esta semana (W) tiene impresión pendiente de marcar, muestra W.
+  // - Si la clase de la próxima semana (W+1) tiene impresión programada, la muestra en W (la semana anterior a la clase).
+  // - Si W ya tenía impresión marcada como hecha (y W+1 está vacía), muestra W.
+  // - Si ambas están vacías y el docente escribe desde Tareas en la semana W, vincula con la clase de la semana W.
+  function resolvePrintTargetWeek(grp, weekIdx) {
+    const currSess = ensureSessionObject(weekIdx, grp.school, grp.course);
+    const nextW = Math.min(weekIdx + 1, state.weeks.length - 1);
+    const nextSess = (nextW > weekIdx) ? ensureSessionObject(nextW, grp.school, grp.course) : null;
+
+    const hasCurr = !!(currSess && currSess.imprimir && currSess.imprimir.trim());
+    const currDone = !!(currSess && currSess.imprimirDado);
+    const hasNext = !!(nextSess && nextSess.imprimir && nextSess.imprimir.trim());
+
+    if (hasCurr && !currDone) return weekIdx;
+    if (hasNext) return nextW;
+    if (hasCurr) return weekIdx;
+    return weekIdx;
+  }
+
   function getGroupPrintStatusForTareas(grp, weekIdx) {
     const nextWeekIdx = weekIdx + 1;
     const nextSess = (nextWeekIdx < state.weeks.length)
       ? ensureSessionObject(nextWeekIdx, grp.school, grp.course)
       : null;
     const currSess = ensureSessionObject(weekIdx, grp.school, grp.course);
-    const wData = ensureTareasWeekData(weekIdx);
-    const manualPrintText = (wData.taskTexts && wData.taskTexts[`${grp.id}_print`]) || "";
 
     const hasNextWeekPrint = !!(nextSess && nextSess.imprimir && nextSess.imprimir.trim());
     const nextWeekDone = !!(nextSess && nextSess.imprimirDado);
 
     const hasCurrWeekUnprinted = !!(currSess && currSess.imprimir && currSess.imprimir.trim() && !currSess.imprimirDado);
     const hasCurrWeekPrinted = !!(currSess && currSess.imprimir && currSess.imprimir.trim() && currSess.imprimirDado);
-
-    const hasManualPrint = !!(manualPrintText && manualPrintText.trim());
-    const manualDone = !!(wData.state && wData.state[`${grp.id}_print`]);
 
     return {
       hasNextWeekPrint,
@@ -2255,29 +2270,59 @@
       hasCurrWeekUnprinted,
       hasCurrWeekPrinted,
       currWeekText: (currSess && currSess.imprimir) ? currSess.imprimir.trim() : "",
-      hasManualPrint,
-      manualPrintText: manualPrintText.trim(),
-      manualDone,
-      isPendingAny: (hasNextWeekPrint && !nextWeekDone) || hasCurrWeekUnprinted || (hasManualPrint && !manualDone)
+      isPendingAny: (hasNextWeekPrint && !nextWeekDone) || hasCurrWeekUnprinted
     };
+  }
+
+  function isGroupInLongTermTask(task, grpOrId) {
+    const grp = typeof grpOrId === "string" ? getGroupById(grpOrId) : grpOrId;
+    if (!grp || !task) return false;
+    if (!task.scope || task.scope === "all") return true;
+    if (task.scope === "Riba-roja") return grp.center === "Riba-roja";
+    if (task.scope === "Manises") return grp.center === "Manises";
+    if (task.scope === "manual") return Array.isArray(task.groups) && task.groups.includes(grp.id);
+    if (task.scope === grp.level) return true;
+    return false;
   }
 
   function isGroupPendingInTareas(groupId, weekIdx) {
     const grp = getGroupById(groupId);
     if (!grp) return false;
+
+    if (state.activeModule === "tareas" && state.tareasView === "largo") {
+      const tasks = state.tareas.longTermTasks || [];
+      const ltState = state.tareas.longTermState || {};
+      for (const t of tasks) {
+        if (isGroupInLongTermTask(t, grp) && !ltState[`${t.id}_${groupId}`]) {
+          return true;
+        }
+      }
+      return false;
+    }
+
     const teachStatus = getGroupTeachingStatus(grp.school, grp.course, weekIdx);
     const wData = ensureTareasWeekData(weekIdx);
     const pStatus = getGroupPrintStatusForTareas(grp, weekIdx);
 
-    // 1. Impresiones para la próxima semana (o atrasadas de esta) siempre cuentan aunque hoy sea festivo
+    // 1. Impresiones pendientes (de la clase de la próxima semana o de esta)
     if (pStatus.isPendingAny) return true;
 
-    // Si este grupo no tiene clase esta semana por festivo/evento, no exigir Mat. Base
+    // 2. Material Base y Adaptación NEAE (si es día lectivo para el grupo)
     if (teachStatus.isLectivo) {
       if (!wData.state[`${groupId}_mat`]) return true;
       if (hasNeaeProfile(groupId) && !wData.state[`${groupId}_neae`]) return true;
     }
 
+    // 3. Avisos de clase y Avisos Educamos vinculados a la clase de esta semana
+    const currSess = ensureSessionObject(weekIdx, grp.school, grp.course);
+    if (currSess && currSess.avisos && currSess.avisos.trim() && !currSess.avisoDado) {
+      return true;
+    }
+    if (currSess && currSess.educamos && currSess.educamos.trim() && !currSess.educamosDado) {
+      return true;
+    }
+
+    // 4. Plataformas y Cuaderno / Notas (desvinculadas de las clases)
     for (const t of ["platform", "grades"]) {
       const key = `${groupId}_${t}`;
       if (wData.taskTexts[key] && wData.taskTexts[key].trim() && !wData.state[key]) {
@@ -2285,12 +2330,316 @@
       }
     }
 
-    const currSess = ensureSessionObject(weekIdx, grp.school, grp.course);
-    if (currSess && currSess.educamos && currSess.educamos.trim() && !currSess.educamosDado) {
+    return false;
+  }
+
+  function getFilteredTareasGroups(weekIdx, isLongTerm = false) {
+    const wData = ensureTareasWeekData(weekIdx);
+    return ALL_GROUPS.filter(g => {
+      if (state.tareasFilter === "Riba-roja" && g.center !== "Riba-roja") return false;
+      if (state.tareasFilter === "Manises" && g.center !== "Manises") return false;
+      if (!isLongTerm && state.tareasFilter === "neae" && !hasNeaeProfile(g.id)) return false;
+      if (state.tareasFilter === "pending" && !isGroupPendingInTareas(g.id, weekIdx)) return false;
+      if (state.tareasHideDone && !isGroupPendingInTareas(g.id, weekIdx)) return false;
+      if (state.searchQuery) {
+        const sess = ensureSessionObject(weekIdx, g.school, g.course);
+        const pSt = getGroupPrintStatusForTareas(g, weekIdx);
+        const hay = `${g.shortName} ${sess.tema} ${sess.avisos} ${sess.educamos} ${pSt.nextWeekText} ${pSt.currWeekText} ${wData.notes[g.id] || ""}`.toLowerCase();
+        if (!hay.includes(state.searchQuery)) return false;
+      }
       return true;
+    });
+  }
+
+  function renderNeaeCellContent(groupId, weekIdx) {
+    if (!hasNeaeProfile(groupId)) {
+      return `<span class="neae-static-empty" title="Sin alumnos NEAE configurados en este grupo">—</span>`;
+    }
+    const wData = ensureTareasWeekData(weekIdx);
+    const key = `${groupId}_neae`;
+    const isDone = !!wData.state[key];
+    const isOverdue = !!wData.overdue[key] && !isDone;
+
+    let btnClass = "status-btn";
+    let labelHtml = "";
+    if (isDone) {
+      btnClass += " checked";
+      labelHtml = `<span>✓ Adaptado</span>`;
+    } else if (isOverdue) {
+      btnClass += " overdue";
+      labelHtml = `<span class="overdue-tag">⚠️ ATRASADO</span><span>Saldar NEAE</span>`;
+    } else {
+      btnClass += " neae-pending";
+      labelHtml = `<span>Adaptar NEAE</span>`;
     }
 
-    return false;
+    return `
+      <button type="button" class="${btnClass}" onclick="App.toggleTareasCheck('${groupId}','neae')">
+        ${labelHtml}
+      </button>
+    `;
+  }
+
+  // Renderiza el botón inferior de una celda vinculada con la clase del Planner (Impresión, Avisos, Educamos)
+  function renderPlannerLinkedButtonContent(groupId, fieldType, targetWeekIdx, viewWeekIdx) {
+    const grp = getGroupById(groupId);
+    if (!grp) return "";
+    const sess = ensureSessionObject(targetWeekIdx, grp.school, grp.course);
+    const wData = ensureTareasWeekData(viewWeekIdx);
+
+    let textVal = "";
+    let isDone = false;
+    let isOverdue = false;
+    let idleHint = "";
+    let pendingLabel = "";
+    let doneLabel = "";
+    let overdueActionLabel = "";
+
+    const inputId = `input-linked-${groupId}-${fieldType}`;
+
+    if (fieldType === "imprimir") {
+      textVal = (sess && sess.imprimir) ? sess.imprimir.trim() : "";
+      isDone = !!(sess && sess.imprimirDado);
+      isOverdue = !!(wData.overdue && wData.overdue[`${groupId}_print`]) && !isDone;
+      idleHint = "imprimir";
+      const weekSuffix = (targetWeekIdx !== viewWeekIdx) ? ` (Sem. ${targetWeekIdx + 1})` : "";
+      pendingLabel = `Fotocopiar${weekSuffix}`;
+      doneLabel = `✓ Impreso${weekSuffix}`;
+      overdueActionLabel = "Saldar copia";
+    } else if (fieldType === "avisos") {
+      textVal = (sess && sess.avisos) ? sess.avisos.trim() : "";
+      isDone = !!(sess && sess.avisoDado);
+      isOverdue = !!(wData.overdue && wData.overdue[`${groupId}_avisos`]) && !isDone;
+      idleHint = "avisar en clase";
+      pendingLabel = "Dar aviso";
+      doneLabel = "✓ Dicho";
+      overdueActionLabel = "Saldar aviso";
+    } else if (fieldType === "educamos") {
+      textVal = (sess && sess.educamos) ? sess.educamos.trim() : "";
+      isDone = !!(sess && sess.educamosDado);
+      isOverdue = !!(wData.overdue && wData.overdue[`${groupId}_educamos`]) && !isDone;
+      idleHint = "avisar en Educamos";
+      pendingLabel = "Avisar Educamos";
+      doneLabel = "✓ Enviado";
+      overdueActionLabel = "Saldar Educamos";
+    }
+
+    if (!textVal) {
+      return `
+        <div class="task-btn-idle" onclick="document.getElementById('${inputId}')?.focus()" title="Escribe arriba qué ${idleHint} para activar el botón (sincronizado con la clase en el Planner)">
+          —
+        </div>
+      `;
+    }
+
+    let btnClass = "status-btn";
+    let labelHtml = "";
+    if (isDone) {
+      btnClass += " checked";
+      labelHtml = `<span>${doneLabel}</span>`;
+    } else if (isOverdue) {
+      btnClass += " overdue";
+      labelHtml = `<span class="overdue-tag">⚠️ ATRASADO</span><span>${overdueActionLabel}</span>`;
+    } else {
+      labelHtml = `<span>${pendingLabel}</span>`;
+    }
+
+    return `
+      <button type="button" class="${btnClass}" onclick="App.togglePlannerLinkedTaskDone('${groupId}','${fieldType}',${targetWeekIdx})">
+        ${labelHtml}
+      </button>
+    `;
+  }
+
+  function renderPlannerLinkedTaskCell(grp, fieldType, viewWeekIdx) {
+    const targetWeekIdx = (fieldType === "imprimir")
+      ? resolvePrintTargetWeek(grp, viewWeekIdx)
+      : viewWeekIdx;
+    const sess = ensureSessionObject(targetWeekIdx, grp.school, grp.course);
+
+    let textVal = "";
+    let placeholder = "";
+    let titleTip = "";
+
+    if (fieldType === "imprimir") {
+      textVal = (sess && sess.imprimir) || "";
+      placeholder = (targetWeekIdx !== viewWeekIdx)
+        ? `Fotocopiar (Sem. ${targetWeekIdx + 1})...`
+        : "Fotocopiar...";
+      titleTip = `Vinculado con el apartado Imprimir de ${grp.shortName} en la Semana ${targetWeekIdx + 1}`;
+    } else if (fieldType === "avisos") {
+      textVal = (sess && sess.avisos) || "";
+      placeholder = "Avisos clase...";
+      titleTip = `Vinculado con los Avisos de clase de ${grp.shortName} en la Semana ${targetWeekIdx + 1}`;
+    } else if (fieldType === "educamos") {
+      textVal = (sess && sess.educamos) || "";
+      placeholder = "Avisar Educamos...";
+      titleTip = `Vinculado con Educamos de ${grp.shortName} en la Semana ${targetWeekIdx + 1}`;
+    }
+
+    const hasContentClass = textVal.trim().length > 0 ? " has-content" : "";
+    const inputId = `input-linked-${grp.id}-${fieldType}`;
+    const wrapId = `btn-wrap-linked-${grp.id}-${fieldType}`;
+
+    return `
+      <td class="weekly-task-col">
+        <div class="task-cell-box">
+          <input
+            type="text"
+            id="${inputId}"
+            data-target-week="${targetWeekIdx}"
+            class="task-inline-input${hasContentClass}"
+            placeholder="${placeholder}"
+            value="${escapeHTML(textVal)}"
+            title="${escapeHTML(titleTip)}"
+            oninput="App.onPlannerLinkedTaskInput('${grp.id}','${fieldType}',${targetWeekIdx},this.value)"
+          />
+          <div id="${wrapId}" class="task-btn-wrap">
+            ${renderPlannerLinkedButtonContent(grp.id, fieldType, targetWeekIdx, viewWeekIdx)}
+          </div>
+        </div>
+      </td>
+    `;
+  }
+
+  // Renderiza el botón inferior de una celda semanal desvinculada de las clases (Plataformas, Cuaderno/Notas)
+  function renderUnlinkedTaskButtonContent(groupId, taskType, platformLabel, weekIdx) {
+    const wData = ensureTareasWeekData(weekIdx);
+    const key = `${groupId}_${taskType}`;
+    const textVal = (wData.taskTexts && wData.taskTexts[key]) ? wData.taskTexts[key].trim() : "";
+    const inputId = `input-unlinked-${key}`;
+
+    if (!textVal) {
+      const hint = taskType === "platform" ? "subir" : "evaluar";
+      return `
+        <div class="task-btn-idle" onclick="document.getElementById('${inputId}')?.focus()" title="Escribe arriba qué ${hint} para activar el botón de pendiente">
+          —
+        </div>
+      `;
+    }
+
+    const isDone = !!(wData.state && wData.state[key]);
+    const isOverdue = !!(wData.overdue && wData.overdue[key]) && !isDone;
+
+    let btnClass = "status-btn";
+    let labelHtml = "";
+    if (isDone) {
+      btnClass += " checked";
+      const doneText = taskType === "platform" ? `✓ En ${platformLabel}` : "✓ Al día";
+      labelHtml = `<span>${doneText}</span>`;
+    } else if (isOverdue) {
+      btnClass += " overdue";
+      labelHtml = `<span class="overdue-tag">⚠️ ATRASADO</span><span>Saldar deuda</span>`;
+    } else {
+      const pendText = taskType === "platform" ? `Subir ${platformLabel}` : "Poner notas";
+      labelHtml = `<span>${pendText}</span>`;
+    }
+
+    return `
+      <button type="button" class="${btnClass}" onclick="App.toggleTareasCheck('${groupId}','${taskType}')">
+        ${labelHtml}
+      </button>
+    `;
+  }
+
+  function renderUnlinkedConditionalTaskCell(grp, taskType, platformLabel, weekIdx) {
+    const wData = ensureTareasWeekData(weekIdx);
+    const key = `${grp.id}_${taskType}`;
+    const textVal = (wData.taskTexts && wData.taskTexts[key]) || "";
+    const hasContentClass = textVal.trim().length > 0 ? " has-content" : "";
+    const placeholder = taskType === "platform" ? `Subir ${platformLabel}...` : "Poner notas...";
+    const inputId = `input-unlinked-${key}`;
+    const wrapId = `btn-wrap-unlinked-${key}`;
+
+    return `
+      <td class="weekly-task-col">
+        <div class="task-cell-box">
+          <input
+            type="text"
+            id="${inputId}"
+            class="task-inline-input${hasContentClass}"
+            placeholder="${placeholder}"
+            value="${escapeHTML(textVal)}"
+            title="Tarea semanal personal (desvinculada de las clases)"
+            oninput="App.onStandardTaskTextInput('${grp.id}','${taskType}',this.value)"
+          />
+          <div id="${wrapId}" class="task-btn-wrap">
+            ${renderUnlinkedTaskButtonContent(grp.id, taskType, platformLabel, weekIdx)}
+          </div>
+        </div>
+      </td>
+    `;
+  }
+
+  function updateTareasColumnStatusTags() {
+    if (state.activeModule !== "tareas" || state.tareasView !== "semanal") return;
+    const weekIdx = state.currentWeekIndex;
+    const wData = ensureTareasWeekData(weekIdx);
+    const targetGroups = getFilteredTareasGroups(weekIdx, false);
+
+    const checkColDone = (colType) => {
+      if (targetGroups.length === 0) return false;
+      if (colType === "mat") {
+        return targetGroups.every(g => !!wData.state[`${g.id}_mat`]);
+      }
+      if (colType === "neae") {
+        const neaeGroups = targetGroups.filter(g => hasNeaeProfile(g.id));
+        if (neaeGroups.length === 0) return false;
+        return neaeGroups.every(g => !!wData.state[`${g.id}_neae`]);
+      }
+      if (colType === "print") {
+        const active = targetGroups.filter(g => {
+          const tW = resolvePrintTargetWeek(g, weekIdx);
+          const s = ensureSessionObject(tW, g.school, g.course);
+          return !!(s && s.imprimir && s.imprimir.trim());
+        });
+        if (active.length === 0) return false;
+        return active.every(g => {
+          const tW = resolvePrintTargetWeek(g, weekIdx);
+          const s = ensureSessionObject(tW, g.school, g.course);
+          return !!(s && s.imprimirDado);
+        });
+      }
+      if (colType === "avisos") {
+        const active = targetGroups.filter(g => {
+          const s = ensureSessionObject(weekIdx, g.school, g.course);
+          return !!(s && s.avisos && s.avisos.trim());
+        });
+        if (active.length === 0) return false;
+        return active.every(g => {
+          const s = ensureSessionObject(weekIdx, g.school, g.course);
+          return !!(s && s.avisoDado);
+        });
+      }
+      if (colType === "educamos") {
+        const active = targetGroups.filter(g => {
+          const s = ensureSessionObject(weekIdx, g.school, g.course);
+          return !!(s && s.educamos && s.educamos.trim());
+        });
+        if (active.length === 0) return false;
+        return active.every(g => {
+          const s = ensureSessionObject(weekIdx, g.school, g.course);
+          return !!(s && s.educamosDado);
+        });
+      }
+      if (colType === "platform" || colType === "grades") {
+        const active = targetGroups.filter(g => {
+          const k = `${g.id}_${colType}`;
+          return !!(wData.taskTexts && wData.taskTexts[k] && wData.taskTexts[k].trim());
+        });
+        if (active.length === 0) return false;
+        return active.every(g => !!wData.state[`${g.id}_${colType}`]);
+      }
+      return false;
+    };
+
+    ["mat", "neae", "print", "avisos", "educamos", "platform", "grades"].forEach(col => {
+      const el = document.getElementById(`colStatus-${col}`);
+      if (!el) return;
+      const done = checkColDone(col);
+      el.textContent = done ? "✓ LISTA" : "";
+      el.classList.toggle("active", done);
+    });
   }
 
   function renderTareasWeeklyView(container) {
@@ -2301,6 +2650,7 @@
     wrap.className = "tareas-view-container";
 
     // 1. Barra de Filtros y Acciones de Tareas Semanales
+    const pendingCount = ALL_GROUPS.filter(g => isGroupPendingInTareas(g.id, weekIdx)).length;
     const toolbar = document.createElement("div");
     toolbar.className = "subview-toolbar";
     toolbar.innerHTML = `
@@ -2309,22 +2659,22 @@
           <button type="button" class="filter-pill-btn ${state.tareasFilter === 'all' ? 'active' : ''}" onclick="App.setTareasFilter('all')">Todos (17)</button>
           <button type="button" class="filter-pill-btn ${state.tareasFilter === 'Riba-roja' ? 'active' : ''}" onclick="App.setTareasFilter('Riba-roja')">🔴 Riba-roja (9)</button>
           <button type="button" class="filter-pill-btn ${state.tareasFilter === 'Manises' ? 'active' : ''}" onclick="App.setTareasFilter('Manises')">🔵 Manises (8)</button>
-          <button type="button" class="filter-pill-btn ${state.tareasFilter === 'neae' ? 'active' : ''}" onclick="App.setTareasFilter('neae')">🧩 Con NEAE</button>
-          <button type="button" class="filter-pill-btn ${state.tareasFilter === 'pending' ? 'active' : ''}" onclick="App.setTareasFilter('pending')">⏳ Con pendientes</button>
+          <button type="button" class="filter-pill-btn ${state.tareasFilter === 'neae' ? 'active' : ''}" onclick="App.setTareasFilter('neae')">🟣 NEAE</button>
+          <button type="button" class="filter-pill-btn ${state.tareasFilter === 'pending' ? 'active' : ''}" onclick="App.setTareasFilter('pending')">⏳ Pendientes (${pendingCount})</button>
         </div>
 
         <button type="button" class="corporate-btn ${state.tareasHideDone ? 'primary' : ''}" onclick="App.toggleTareasHideDone()">
-          ${state.tareasHideDone ? "👁️ Mostrar todos" : "⏳ Ocultar completados"}
+          ${state.tareasHideDone ? "👁️ Ver todos" : "⏳ Ocultar hechos"}
         </button>
       </div>
 
       <div class="toolbar-cluster" style="font-size:11px;color:var(--text-secondary);">
-        <span>🖨️ <strong>Imprimir</strong> muestra automáticamente como pendiente lo programado para las clases de la <strong>próxima semana (Sem. ${Math.min(weekIdx + 2, 44)})</strong>.</span>
+        <span>🔗 <strong>Fotocopias, Avisos y Educamos</strong> están sincronizados en tiempo real con la clase correspondiente del Planner.</span>
       </div>
     `;
     wrap.appendChild(toolbar);
 
-    // 2. Tabla Corporativa de Control Semanal
+    // 2. Tabla de Control Semanal con el estilo de columnas clásico armonizado
     const scroll = document.createElement("div");
     scroll.className = "tareas-table-scroll";
 
@@ -2334,250 +2684,292 @@
     table.innerHTML = `
       <thead>
         <tr>
-          <th>CURSO / SESIÓN PLANNER (${escapeHTML(state.weeks[weekIdx].num_sem)})</th>
-          <th>
-            <div style="display:flex;align-items:center;justify-content:center;gap:5px;">
-              <span>📚 Mat. Base</span>
-              <button type="button" class="matrix-mini-btn" style="color:#0f172a;background:#ffffff;border:1px solid #cbd5e1;font-weight:800;" onclick="App.bulkToggleTareasColumn('mat')" title="Marcar/desmarcar Material Base en todos los visibles">✓</button>
+          <th class="col-center">CENTRO</th>
+          <th class="col-group">GRUPO Y NECESIDADES NEAE</th>
+
+          <th class="weekly-task-col">
+            <div class="th-content">
+              <div class="th-title-line">
+                <span>1. MAT. BASE</span>
+                <span id="colStatus-mat" class="col-status-tag"></span>
+              </div>
+              <button type="button" class="th-action-btn" onclick="App.bulkToggleTareasColumn('mat')">✓ Todos</button>
             </div>
           </th>
-          <th>🧩 Adapt. NEAE</th>
-          <th>
-            <div style="display:flex;align-items:center;justify-content:center;gap:5px;">
-              <span>🖨️ Imprimir (Próx. Sem.)</span>
-              <button type="button" class="matrix-mini-btn" style="color:#0f172a;background:#ffffff;border:1px solid #cbd5e1;font-weight:800;" onclick="App.bulkToggleTareasColumn('print')" title="Marcar todas las impresiones pendientes como listas">✓</button>
+
+          <th class="weekly-task-col th-neae">
+            <div class="th-content">
+              <div class="th-title-line">
+                <span>2. ADAPT. NEAE</span>
+                <span id="colStatus-neae" class="col-status-tag"></span>
+              </div>
+              <button type="button" class="th-action-btn" onclick="App.bulkToggleTareasColumn('neae')">✓ Todos</button>
             </div>
           </th>
-          <th>
-            <div style="display:flex;align-items:center;justify-content:center;gap:5px;">
-              <span>🏫 Avisos Educamos</span>
-              <button type="button" class="matrix-mini-btn" style="color:#0f172a;background:#ffffff;border:1px solid #cbd5e1;font-weight:800;" onclick="App.bulkToggleTareasColumn('educamos')" title="Marcar todos los avisos de Educamos como enviados">✓</button>
+
+          <th class="weekly-task-col">
+            <div class="th-content">
+              <div class="th-title-line">
+                <span>3. FOTOCOPIAS</span>
+                <span id="colStatus-print" class="col-status-tag"></span>
+              </div>
+              <button type="button" class="th-action-btn" onclick="App.bulkToggleTareasColumn('print')">✓ Todos</button>
             </div>
           </th>
-          <th>💻 Plataformas</th>
-          <th>📊 Cuaderno / Notas</th>
-          <th>📝 Notas Puntuales</th>
+
+          <th class="weekly-task-col">
+            <div class="th-content">
+              <div class="th-title-line">
+                <span>4. AVISOS CLASE</span>
+                <span id="colStatus-avisos" class="col-status-tag"></span>
+              </div>
+              <button type="button" class="th-action-btn" onclick="App.bulkToggleTareasColumn('avisos')">✓ Todos</button>
+            </div>
+          </th>
+
+          <th class="weekly-task-col">
+            <div class="th-content">
+              <div class="th-title-line">
+                <span>5. AVISOS EDUCAMOS</span>
+                <span id="colStatus-educamos" class="col-status-tag"></span>
+              </div>
+              <button type="button" class="th-action-btn" onclick="App.bulkToggleTareasColumn('educamos')">✓ Todos</button>
+            </div>
+          </th>
+
+          <th class="weekly-task-col">
+            <div class="th-content">
+              <div class="th-title-line">
+                <span>6. PLATAFORMAS</span>
+                <span id="colStatus-platform" class="col-status-tag"></span>
+              </div>
+              <button type="button" class="th-action-btn" onclick="App.bulkToggleTareasColumn('platform')">✓ Todos</button>
+            </div>
+          </th>
+
+          <th class="weekly-task-col">
+            <div class="th-content">
+              <div class="th-title-line">
+                <span>7. CUADERNO / NOTAS</span>
+                <span id="colStatus-grades" class="col-status-tag"></span>
+              </div>
+              <button type="button" class="th-action-btn" onclick="App.bulkToggleTareasColumn('grades')">✓ Todos</button>
+            </div>
+          </th>
+
+          <th class="note-cell">NOTAS / CASOS PUNTUALES</th>
         </tr>
       </thead>
     `;
 
     const tbody = document.createElement("tbody");
+    const visibleGroups = getFilteredTareasGroups(weekIdx, false);
 
-    ["Riba-roja", "Manises"].forEach(centerName => {
-      const centerGroups = ALL_GROUPS.filter(g => {
-        if (g.center !== centerName) return false;
-        if (state.tareasFilter === "Riba-roja" && g.center !== "Riba-roja") return false;
-        if (state.tareasFilter === "Manises" && g.center !== "Manises") return false;
-        if (state.tareasFilter === "neae" && !hasNeaeProfile(g.id)) return false;
-        if (state.tareasFilter === "pending" && !isGroupPendingInTareas(g.id, weekIdx)) return false;
-        if (state.tareasHideDone && !isGroupPendingInTareas(g.id, weekIdx)) return false;
-        if (state.searchQuery) {
-          const sess = ensureSessionObject(weekIdx, g.school, g.course);
-          const pSt = getGroupPrintStatusForTareas(g, weekIdx);
-          const hay = `${g.shortName} ${sess.tema} ${sess.educamos} ${pSt.nextWeekText} ${wData.notes[g.id] || ""}`.toLowerCase();
-          if (!hay.includes(state.searchQuery)) return false;
-        }
-        return true;
-      });
-
-      if (centerGroups.length === 0) return;
-
-      const secTr = document.createElement("tr");
-      secTr.className = "school-section-row";
-      secTr.innerHTML = `<td colspan="8">${centerName === "Riba-roja" ? "🔴 COLEGIO RIBA-ROJA (Lunes y Miércoles)" : "🔵 COLEGIO MANISES (Martes y Jueves)"}</td>`;
-      tbody.appendChild(secTr);
-
-      centerGroups.forEach(grp => {
+    if (visibleGroups.length === 0) {
+      const emptyTr = document.createElement("tr");
+      emptyTr.innerHTML = `
+        <td colspan="10" style="text-align:center; padding:38px 20px; background:#f0fdf4; color:#15803d; font-weight:700;">
+          🎉 ¡Todo al día! No quedan tareas pendientes con el filtro seleccionado.
+        </td>
+      `;
+      tbody.appendChild(emptyTr);
+    } else {
+      visibleGroups.forEach(grp => {
         const tr = document.createElement("tr");
-        const currSess = ensureSessionObject(weekIdx, grp.school, grp.course);
-        const teachStatus = getGroupTeachingStatus(grp.school, grp.course, weekIdx);
-        const pStatus = getGroupPrintStatusForTareas(grp, weekIdx);
-
-        // Columna 1: Curso + Resumen de solo lectura de la sesión en Planner (sin edición de clase desde Tareas)
-        const dateBadge = teachStatus.sched ? `${teachStatus.sched.dayName} ${teachStatus.sched.dateNum}/${teachStatus.sched.monthNum}` : "";
-        let sessionSummaryHtml = "";
-        if (!teachStatus.isLectivo) {
-          sessionSummaryHtml = `<span class="mini-meta-tag aviso">🚫 ${escapeHTML(teachStatus.reason)}</span>`;
-        } else if (currSess.tema || currSess.actividades) {
-          sessionSummaryHtml = `<span style="font-size:10.5px;color:var(--text-secondary);font-weight:600;" title="${escapeHTML(currSess.actividades || '')}">📖 ${escapeHTML(currSess.tema || "Sesión programada")}</span>`;
-        } else {
-          sessionSummaryHtml = `<span style="font-size:10px;color:var(--text-muted);font-style:italic;">Sin sesión asignada</span>`;
-        }
-
-        // Columna 2: Material Base
-        const matKey = `${grp.id}_mat`;
-        const matDone = !!wData.state[matKey];
-        const matOverdue = !!wData.overdue[matKey] && !matDone;
-        let matHtml = "";
-        if (!teachStatus.isLectivo && !matDone) {
-          matHtml = `<span style="font-size:10.5px;color:var(--text-muted);">🚫 Sin clase</span>`;
-        } else {
-          matHtml = `
-            <div class="task-status-cell">
-              <button type="button" class="task-check-btn ${matDone ? 'done' : (matOverdue ? 'overdue' : '')}" onclick="App.toggleTareasCheck('${grp.id}','mat')">
-                ${matDone ? "✓ Preparado" : (matOverdue ? "⚠️ Atrasado" : "Preparar Mat.")}
-              </button>
-            </div>
-          `;
-        }
-
-        // Columna 3: Adaptación NEAE
-        let neaeHtml = `<span style="color:var(--text-muted);font-size:11px;">—</span>`;
-        if (hasNeaeProfile(grp.id)) {
-          const neaeKey = `${grp.id}_neae`;
-          const neaeDone = !!wData.state[neaeKey];
-          const neaeOver = !!wData.overdue[neaeKey] && !neaeDone;
-          const profileTxt = state.tareas.neaeProfiles[grp.id];
-          neaeHtml = `
-            <div class="task-status-cell">
-              <button type="button" class="task-check-btn ${neaeDone ? 'done' : (neaeOver ? 'overdue' : '')}" onclick="App.toggleTareasCheck('${grp.id}','neae')" title="${escapeHTML(profileTxt)}">
-                ${neaeDone ? "✓ Adaptado" : "Adaptar NEAE"}
-              </button>
-              <span class="task-subtext-preview" title="${escapeHTML(profileTxt)}">🧩 ${escapeHTML(profileTxt.replace(/\n/g, " · "))}</span>
-            </div>
-          `;
-        }
-
-        // Columna 4: IMPRIMIR / FOTOCOPIAS (Vinculado a la clase de la semana siguiente W+1, más aviso si W sigue pendiente)
-        let printHtml = "";
-        const printBlocks = [];
-
-        // A) Impresión programada en la clase de la PRÓXIMA SEMANA (Sem. W+1 -> se prepara en Sem. W)
-        if (pStatus.hasNextWeekPrint) {
-          printBlocks.push(`
-            <div class="task-status-cell">
-              <button type="button" class="task-check-btn ${pStatus.nextWeekDone ? 'done' : 'print-pending-nextweek'}" onclick="App.togglePlannerPrintFromTareas('${grp.school}','${grp.course}',${pStatus.nextWeekIdx})" title="Impresión requerida para la clase de la Semana ${pStatus.nextWeekIdx + 1} (${escapeHTML(pStatus.nextWeekTema)})">
-                ${pStatus.nextWeekDone ? "✓ Impreso (Próx.)" : `🖨️ Imprimir (Sem. ${pStatus.nextWeekIdx + 1})`}
-              </button>
-              <span class="task-subtext-preview"><strong>Para Sem. ${pStatus.nextWeekIdx + 1}:</strong> ${escapeHTML(pStatus.nextWeekText)}</span>
-            </div>
-          `);
-        }
-
-        // B) Si en la clase de ESTA MISMA SEMANA (Sem. W) había algo para imprimir que aún NO se ha marcado como impreso
-        if (pStatus.hasCurrWeekUnprinted) {
-          printBlocks.push(`
-            <div class="task-status-cell">
-              <button type="button" class="task-check-btn overdue" onclick="App.togglePlannerPrintFromTareas('${grp.school}','${grp.course}',${weekIdx})" title="¡Urgente! Esta impresión es para la clase de esta misma semana (${weekIdx + 1})">
-                ⚠️ ¡Para esta sem.!
-              </button>
-              <span class="task-subtext-preview" style="color:#b45309;font-weight:700;">Sem. ${weekIdx + 1}: ${escapeHTML(pStatus.currWeekText)}</span>
-            </div>
-          `);
-        } else if (pStatus.hasCurrWeekPrinted && !pStatus.hasNextWeekPrint) {
-          printBlocks.push(`
-            <div class="task-status-cell">
-              <button type="button" class="task-check-btn done" onclick="App.togglePlannerPrintFromTareas('${grp.school}','${grp.course}',${weekIdx})">
-                ✓ Impreso (Sem. ${weekIdx + 1})
-              </button>
-              <span class="task-subtext-preview">${escapeHTML(pStatus.currWeekText)}</span>
-            </div>
-          `);
-        }
-
-        if (printBlocks.length === 0) {
-          printHtml = `
-            <div class="task-status-cell">
-              <button type="button" class="matrix-mini-btn" style="font-size:10.5px;color:var(--text-muted);" onclick="App.promptSetNextWeekPrint('${grp.school}','${grp.course}',${nextWeekIndexSafe(weekIdx)})" title="Añadir qué imprimir para la clase de la próxima semana">
-                ➕ Añadir impresión
-              </button>
-            </div>
-          `;
-        } else {
-          printHtml = `<div style="display:flex;flex-direction:column;gap:5px;align-items:center;">${printBlocks.join("")}</div>`;
-        }
-
-        // Columna 5: Avisos Educamos (Sincronizado en tiempo real con la clase de esta semana en el Planner)
-        const hasEdu = !!(currSess.educamos && currSess.educamos.trim());
-        const eduDone = !!currSess.educamosDado;
-        const eduOver = !!wData.overdue[`${grp.id}_educamos`] && !eduDone;
-        let eduHtml = "";
-        if (!hasEdu) {
-          eduHtml = `<span style="color:var(--text-muted);font-size:11px;">—</span>`;
-        } else {
-          eduHtml = `
-            <div class="task-status-cell">
-              <button type="button" class="task-check-btn ${eduDone ? 'done' : (eduOver ? 'overdue' : '')}" onclick="App.toggleEducamosFromTareas('${grp.id}',${weekIdx})" title="${escapeHTML(currSess.educamos)}">
-                ${eduDone ? "✓ Enviado" : (eduOver ? "⚠️ Atrasado" : "🏫 Avisar Educamos")}
-              </button>
-              <span class="task-subtext-preview">${escapeHTML(currSess.educamos)}</span>
-            </div>
-          `;
-        }
-
-        // Columna 6: Plataformas Digitales
-        const platHtml = renderConfigurableTaskCell(grp.id, "platform", "💻 Plataforma", wData);
-
-        // Columna 7: Cuaderno / Notas
-        const gradesHtml = renderConfigurableTaskCell(grp.id, "grades", "📊 Evaluar", wData);
-
-        // Columna 8: Notas Puntuales
+        const badgeClass = grp.school === "ribarroja" ? "badge-ribarroja" : "badge-manises";
+        const daysLabel = grp.school === "ribarroja" ? "L/X" : "M/J";
+        const platformLabel = grp.school === "ribarroja" ? "Teams" : "Classroom";
+        const neaeVal = (state.tareas.neaeProfiles && state.tareas.neaeProfiles[grp.id]) || "";
         const noteVal = wData.notes[grp.id] || "";
 
+        // 1. Material Base
+        const matKey = `${grp.id}_mat`;
+        const matDone = !!wData.state[matKey];
+        const matOver = !!wData.overdue[matKey] && !matDone;
+        let matBtnCls = "status-btn";
+        let matLabel = `<span>Crear Base</span>`;
+        if (matDone) {
+          matBtnCls += " checked";
+          matLabel = `<span>✓ Listo</span>`;
+        } else if (matOver) {
+          matBtnCls += " overdue";
+          matLabel = `<span class="overdue-tag">⚠️ ATRASADO</span><span>Saldar deuda</span>`;
+        }
+
         tr.innerHTML = `
-          <th class="group-row-th">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-              <div>
-                <div style="font-size:12px;font-weight:800;color:var(--text-main);">
-                  ${escapeHTML(grp.shortName)}
-                  <span style="font-size:10px;color:var(--text-muted);font-weight:600;margin-left:4px;">${escapeHTML(dateBadge)}</span>
-                </div>
-                <div style="margin-top:2px;">${sessionSummaryHtml}</div>
-              </div>
-              <button type="button" class="matrix-mini-btn" onclick="App.switchModule('planner');App.switchPlannerView('semanal');" title="Ver en el Planner Semanal">📅</button>
+          <td class="col-center">
+            <span class="center-badge ${badgeClass}">${grp.center} (${daysLabel})</span>
+          </td>
+          <td class="col-group">
+            <div class="group-name-header">
+              <span class="group-name">${escapeHTML(grp.shortName)}</span>
             </div>
-          </th>
-          <td>${matHtml}</td>
-          <td>${neaeHtml}</td>
-          <td>${printHtml}</td>
-          <td>${eduHtml}</td>
-          <td>${platHtml}</td>
-          <td>${gradesHtml}</td>
-          <td>
-            <input type="text" class="notes-inline-input" placeholder="Nota rápida..." value="${escapeHTML(noteVal)}" oninput="App.onTareasNoteInput('${grp.id}',this.value)" />
+            <textarea
+              class="neae-textarea"
+              placeholder="Necesidades NEAE (ej. 2 Dislexia, 1 TDAH)..."
+              oninput="App.onNeaeTextareaInput('${grp.id}', this.value)"
+            >${escapeHTML(neaeVal)}</textarea>
+          </td>
+
+          <td class="weekly-task-col">
+            <button type="button" class="${matBtnCls}" onclick="App.toggleTareasCheck('${grp.id}','mat')">
+              ${matLabel}
+            </button>
+          </td>
+
+          <td id="neae-cell-${grp.id}" class="weekly-task-col td-neae">
+            ${renderNeaeCellContent(grp.id, weekIdx)}
+          </td>
+
+          ${renderPlannerLinkedTaskCell(grp, "imprimir", weekIdx)}
+          ${renderPlannerLinkedTaskCell(grp, "avisos", weekIdx)}
+          ${renderPlannerLinkedTaskCell(grp, "educamos", weekIdx)}
+
+          ${renderUnlinkedConditionalTaskCell(grp, "platform", platformLabel, weekIdx)}
+          ${renderUnlinkedConditionalTaskCell(grp, "grades", platformLabel, weekIdx)}
+
+          <td class="note-cell">
+            <input
+              type="text"
+              class="note-input"
+              placeholder="Notas puntuales..."
+              value="${escapeHTML(noteVal)}"
+              oninput="App.onTareasNoteInput('${grp.id}', this.value)"
+            />
           </td>
         `;
         tbody.appendChild(tr);
       });
-    });
+    }
 
     table.appendChild(tbody);
     scroll.appendChild(table);
     wrap.appendChild(scroll);
     container.appendChild(wrap);
+    updateTareasColumnStatusTags();
   }
 
-  function nextWeekIndexSafe(wIdx) {
-    return Math.min(wIdx + 1, state.weeks.length - 1);
+  function onNeaeTextareaInput(groupId, val) {
+    if (!val || !val.trim()) {
+      delete state.tareas.neaeProfiles[groupId];
+    } else {
+      state.tareas.neaeProfiles[groupId] = val;
+    }
+    const cell = document.getElementById(`neae-cell-${groupId}`);
+    if (cell) {
+      cell.innerHTML = renderNeaeCellContent(groupId, state.currentWeekIndex);
+    }
+    persistAll(false);
+    updateTareasColumnStatusTags();
+    updateTopbarBadges();
   }
 
-  function renderConfigurableTaskCell(groupId, taskType, label, wData) {
-    const key = `${groupId}_${taskType}`;
-    const txt = (wData.taskTexts && wData.taskTexts[key]) ? wData.taskTexts[key].trim() : "";
-    const isDone = !!(wData.state && wData.state[key]);
-    const isOver = !!(wData.overdue && wData.overdue[key]) && !isDone;
+  function onPlannerLinkedTaskInput(groupId, fieldType, targetWeekIdx, val) {
+    const grp = getGroupById(groupId);
+    if (!grp) return;
+    const sess = ensureSessionObject(targetWeekIdx, grp.school, grp.course);
+    const wData = ensureTareasWeekData(state.currentWeekIndex);
+    const hasTxt = !!(val && val.trim());
 
-    if (!txt) {
-      return `
-        <div class="task-status-cell">
-          <button type="button" class="matrix-mini-btn" style="font-size:10.5px;color:var(--text-muted);" onclick="App.promptConfigurableTaskText('${groupId}','${taskType}')" title="Asignar tarea puntual de ${label}">
-            ➕ Añadir
-          </button>
-        </div>
-      `;
+    if (fieldType === "imprimir") {
+      sess.imprimir = val;
+      if (!hasTxt) {
+        sess.imprimirDado = false;
+        delete wData.overdue[`${groupId}_print`];
+      }
+    } else if (fieldType === "avisos") {
+      sess.avisos = val;
+      if (!hasTxt) {
+        sess.avisoDado = false;
+        delete wData.overdue[`${groupId}_avisos`];
+      }
+    } else if (fieldType === "educamos") {
+      sess.educamos = val;
+      if (!hasTxt) {
+        sess.educamosDado = false;
+        delete wData.overdue[`${groupId}_educamos`];
+      }
     }
 
-    return `
-      <div class="task-status-cell">
-        <div style="display:inline-flex;align-items:center;gap:3px;">
-          <button type="button" class="task-check-btn ${isDone ? 'done' : (isOver ? 'overdue' : '')}" onclick="App.toggleTareasCheck('${groupId}','${taskType}')">
-            ${isDone ? "✓ Hecho" : (isOver ? "⚠️ Atrasado" : label)}
-          </button>
-          <button type="button" class="matrix-mini-btn" onclick="App.promptConfigurableTaskText('${groupId}','${taskType}')" title="Editar o borrar tarea">✏️</button>
-        </div>
-        <span class="task-subtext-preview">${escapeHTML(txt)}</span>
-      </div>
-    `;
+    const inputEl = document.getElementById(`input-linked-${groupId}-${fieldType}`);
+    if (inputEl) {
+      inputEl.classList.toggle("has-content", hasTxt);
+    }
+    const wrapEl = document.getElementById(`btn-wrap-linked-${groupId}-${fieldType}`);
+    if (wrapEl) {
+      wrapEl.innerHTML = renderPlannerLinkedButtonContent(groupId, fieldType, targetWeekIdx, state.currentWeekIndex);
+    }
+
+    persistAll(false);
+    updateTareasColumnStatusTags();
+    updateTopbarBadges();
+  }
+
+  function togglePlannerLinkedTaskDone(groupId, fieldType, targetWeekIdx) {
+    const grp = getGroupById(groupId);
+    if (!grp) return;
+    pushUndoSnapshot();
+    const sess = ensureSessionObject(targetWeekIdx, grp.school, grp.course);
+    const wData = ensureTareasWeekData(state.currentWeekIndex);
+
+    if (fieldType === "imprimir") {
+      const overKey = `${groupId}_print`;
+      if (wData.overdue[overKey]) {
+        delete wData.overdue[overKey];
+        sess.imprimirDado = true;
+      } else {
+        sess.imprimirDado = !sess.imprimirDado;
+      }
+    } else if (fieldType === "avisos") {
+      const overKey = `${groupId}_avisos`;
+      if (wData.overdue[overKey]) {
+        delete wData.overdue[overKey];
+        sess.avisoDado = true;
+      } else {
+        sess.avisoDado = !sess.avisoDado;
+      }
+    } else if (fieldType === "educamos") {
+      const overKey = `${groupId}_educamos`;
+      if (wData.overdue[overKey]) {
+        delete wData.overdue[overKey];
+        sess.educamosDado = true;
+      } else {
+        sess.educamosDado = !sess.educamosDado;
+      }
+    }
+
+    persistAll(false);
+    renderWorkspace();
+  }
+
+  function onStandardTaskTextInput(groupId, taskType, val) {
+    const weekIdx = state.currentWeekIndex;
+    const wData = ensureTareasWeekData(weekIdx);
+    const key = `${groupId}_${taskType}`;
+    const hasTxt = !!(val && val.trim());
+
+    if (!hasTxt) {
+      delete wData.taskTexts[key];
+      delete wData.state[key];
+      delete wData.overdue[key];
+    } else {
+      wData.taskTexts[key] = val;
+    }
+
+    const inputEl = document.getElementById(`input-unlinked-${key}`);
+    if (inputEl) {
+      inputEl.classList.toggle("has-content", hasTxt);
+    }
+    const grp = getGroupById(groupId);
+    const platformLabel = (grp && grp.school === "ribarroja") ? "Teams" : "Classroom";
+    const wrapEl = document.getElementById(`btn-wrap-unlinked-${key}`);
+    if (wrapEl) {
+      wrapEl.innerHTML = renderUnlinkedTaskButtonContent(groupId, taskType, platformLabel, weekIdx);
+    }
+
+    persistAll(false);
+    updateTareasColumnStatusTags();
+    updateTopbarBadges();
   }
 
   function toggleTareasCheck(groupId, taskType) {
@@ -2601,13 +2993,12 @@
     sess.imprimirDado = !sess.imprimirDado;
     persistAll(false);
     renderWorkspace();
-    showToast(sess.imprimirDado ? `✓ Impresión marcada como lista (Sem. ${targetWeekIdx + 1})` : `🖨️ Impresión marcada como pendiente (Sem. ${targetWeekIdx + 1})`);
   }
 
   function promptSetNextWeekPrint(school, course, targetWeekIdx) {
     const sess = ensureSessionObject(targetWeekIdx, school, course);
     const cur = (sess && sess.imprimir) || "";
-    const val = prompt(`🖨️ ¿Qué necesitas tener impreso para ${formatCourseShort(course)} en la Semana ${targetWeekIdx + 1} (${state.weeks[targetWeekIdx].rango})?\n(Se sincronizará directamente con el apartado Imprimir de esa clase en el Planner)`, cur);
+    const val = prompt(`🖨️ ¿Qué necesitas tener impreso para ${formatCourseShort(course)} en la Semana ${targetWeekIdx + 1}?`, cur);
     if (val === null) return;
     pushUndoSnapshot();
     sess.imprimir = val.trim();
@@ -2617,20 +3008,7 @@
   }
 
   function toggleEducamosFromTareas(groupId, weekIdx) {
-    const grp = getGroupById(groupId);
-    if (!grp) return;
-    pushUndoSnapshot();
-    const sess = ensureSessionObject(weekIdx, grp.school, grp.course);
-    const wData = ensureTareasWeekData(weekIdx);
-    const overKey = `${groupId}_educamos`;
-    if (wData.overdue[overKey]) {
-      delete wData.overdue[overKey];
-      sess.educamosDado = true;
-    } else {
-      sess.educamosDado = !sess.educamosDado;
-    }
-    persistAll(false);
-    renderWorkspace();
+    togglePlannerLinkedTaskDone(groupId, "educamos", weekIdx);
   }
 
   function promptConfigurableTaskText(groupId, taskType) {
@@ -2641,14 +3019,7 @@
     const val = prompt(`Tarea de ${label} para esta semana (deja vacío para eliminar):`, cur);
     if (val === null) return;
     pushUndoSnapshot();
-    if (!val.trim()) {
-      delete wData.taskTexts[key];
-      delete wData.state[key];
-      delete wData.overdue[key];
-    } else {
-      wData.taskTexts[key] = val.trim();
-    }
-    persistAll(false);
+    onStandardTaskTextInput(groupId, taskType, val);
     renderWorkspace();
   }
 
@@ -2659,32 +3030,76 @@
   }
 
   function bulkToggleTareasColumn(colType) {
-    pushUndoSnapshot();
     const weekIdx = state.currentWeekIndex;
     const wData = ensureTareasWeekData(weekIdx);
+    const targetGroups = getFilteredTareasGroups(weekIdx, false);
+    if (targetGroups.length === 0) return;
+
+    pushUndoSnapshot();
 
     if (colType === "mat") {
-      const allDone = ALL_GROUPS.every(g => !!wData.state[`${g.id}_mat`]);
-      ALL_GROUPS.forEach(g => {
+      const allDone = targetGroups.every(g => !!wData.state[`${g.id}_mat`]);
+      targetGroups.forEach(g => {
         wData.state[`${g.id}_mat`] = !allDone;
         if (!allDone) delete wData.overdue[`${g.id}_mat`];
       });
-    } else if (colType === "educamos") {
-      const withEdu = ALL_GROUPS.filter(g => {
-        const s = ensureSessionObject(weekIdx, g.school, g.course);
-        return s && s.educamos && s.educamos.trim();
-      });
-      const allDone = withEdu.every(g => ensureSessionObject(weekIdx, g.school, g.course).educamosDado);
-      withEdu.forEach(g => {
-        ensureSessionObject(weekIdx, g.school, g.course).educamosDado = !allDone;
+    } else if (colType === "neae") {
+      const applicable = targetGroups.filter(g => hasNeaeProfile(g.id));
+      if (applicable.length === 0) return;
+      const allDone = applicable.every(g => !!wData.state[`${g.id}_neae`]);
+      applicable.forEach(g => {
+        wData.state[`${g.id}_neae`] = !allDone;
+        if (!allDone) delete wData.overdue[`${g.id}_neae`];
       });
     } else if (colType === "print") {
-      const nextW = Math.min(weekIdx + 1, state.weeks.length - 1);
-      ALL_GROUPS.forEach(g => {
-        const ns = ensureSessionObject(nextW, g.school, g.course);
-        if (ns && ns.imprimir && ns.imprimir.trim()) ns.imprimirDado = true;
-        const cs = ensureSessionObject(weekIdx, g.school, g.course);
-        if (cs && cs.imprimir && cs.imprimir.trim()) cs.imprimirDado = true;
+      const applicable = targetGroups.filter(g => {
+        const tW = resolvePrintTargetWeek(g, weekIdx);
+        const s = ensureSessionObject(tW, g.school, g.course);
+        return !!(s && s.imprimir && s.imprimir.trim());
+      });
+      if (applicable.length === 0) return;
+      const allDone = applicable.every(g => {
+        const tW = resolvePrintTargetWeek(g, weekIdx);
+        return !!ensureSessionObject(tW, g.school, g.course).imprimirDado;
+      });
+      applicable.forEach(g => {
+        const tW = resolvePrintTargetWeek(g, weekIdx);
+        ensureSessionObject(tW, g.school, g.course).imprimirDado = !allDone;
+        if (!allDone) delete wData.overdue[`${g.id}_print`];
+      });
+    } else if (colType === "avisos") {
+      const applicable = targetGroups.filter(g => {
+        const s = ensureSessionObject(weekIdx, g.school, g.course);
+        return !!(s && s.avisos && s.avisos.trim());
+      });
+      if (applicable.length === 0) return;
+      const allDone = applicable.every(g => !!ensureSessionObject(weekIdx, g.school, g.course).avisoDado);
+      applicable.forEach(g => {
+        ensureSessionObject(weekIdx, g.school, g.course).avisoDado = !allDone;
+        if (!allDone) delete wData.overdue[`${g.id}_avisos`];
+      });
+    } else if (colType === "educamos") {
+      const applicable = targetGroups.filter(g => {
+        const s = ensureSessionObject(weekIdx, g.school, g.course);
+        return !!(s && s.educamos && s.educamos.trim());
+      });
+      if (applicable.length === 0) return;
+      const allDone = applicable.every(g => !!ensureSessionObject(weekIdx, g.school, g.course).educamosDado);
+      applicable.forEach(g => {
+        ensureSessionObject(weekIdx, g.school, g.course).educamosDado = !allDone;
+        if (!allDone) delete wData.overdue[`${g.id}_educamos`];
+      });
+    } else if (colType === "platform" || colType === "grades") {
+      const applicable = targetGroups.filter(g => {
+        const k = `${g.id}_${colType}`;
+        return !!(wData.taskTexts && wData.taskTexts[k] && wData.taskTexts[k].trim());
+      });
+      if (applicable.length === 0) return;
+      const allDone = applicable.every(g => !!wData.state[`${g.id}_${colType}`]);
+      applicable.forEach(g => {
+        const k = `${g.id}_${colType}`;
+        wData.state[k] = !allDone;
+        if (!allDone) delete wData.overdue[k];
       });
     }
 
@@ -2692,19 +3107,31 @@
     renderWorkspace();
   }
 
-  // Vista 2 de Tareas: Largo Plazo y Perfiles NEAE
+  // Vista 2 de Tareas: Trabajo a Largo Plazo (Columnas estrechas de 140px estilo hoja clásica)
   function renderTareasLongTermView(container) {
+    const weekIdx = state.currentWeekIndex;
     const wrap = document.createElement("div");
     wrap.className = "tareas-view-container";
+
+    const pendingCount = ALL_GROUPS.filter(g => isGroupPendingInTareas(g.id, weekIdx)).length;
 
     const toolbar = document.createElement("div");
     toolbar.className = "subview-toolbar";
     toolbar.innerHTML = `
       <div class="toolbar-cluster">
-        <span style="font-size:13px;font-weight:800;">🎯 Seguimiento de Tareas a Largo Plazo y Alumnado NEAE</span>
+        <div class="filter-pill-group" role="group" aria-label="Filtrar grupos en Largo Plazo">
+          <button type="button" class="filter-pill-btn ${state.tareasFilter === 'all' ? 'active' : ''}" onclick="App.setTareasFilter('all')">Todos (17)</button>
+          <button type="button" class="filter-pill-btn ${state.tareasFilter === 'Riba-roja' ? 'active' : ''}" onclick="App.setTareasFilter('Riba-roja')">🔴 Riba-roja (9)</button>
+          <button type="button" class="filter-pill-btn ${state.tareasFilter === 'Manises' ? 'active' : ''}" onclick="App.setTareasFilter('Manises')">🔵 Manises (8)</button>
+          <button type="button" class="filter-pill-btn ${state.tareasFilter === 'pending' ? 'active' : ''}" onclick="App.setTareasFilter('pending')">⏳ Pendientes (${pendingCount})</button>
+        </div>
+
+        <button type="button" class="corporate-btn ${state.tareasHideDone ? 'primary' : ''}" onclick="App.toggleTareasHideDone()">
+          ${state.tareasHideDone ? "👁️ Ver todos" : "⏳ Ocultar hechos"}
+        </button>
       </div>
       <div class="toolbar-cluster">
-        <button type="button" class="corporate-btn primary" onclick="App.addNewLongTermTaskPrompt()">➕ Nueva Tarea a Largo Plazo</button>
+        <button type="button" class="corporate-btn primary" onclick="App.openNewLongTermTaskModal()">+ Tarea</button>
       </div>
     `;
     wrap.appendChild(toolbar);
@@ -2718,65 +3145,213 @@
     const table = document.createElement("table");
     table.className = "corporate-tasks-table tareas-long-term-table";
 
-    let ths = `<tr><th class="col-lt-group">CURSO / GRUPO</th><th class="col-lt-neae">🧩 PERFIL NEAE (Todo el curso)</th>`;
-    tasks.forEach((t, idx) => {
-      ths += `
-        <th class="col-lt-task">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-            <span style="font-size:11px;font-weight:800;white-space:normal;line-height:1.25;text-align:left;">📌 ${escapeHTML(t.name)} <small style="opacity:0.75;font-weight:600;">(${escapeHTML(t.scope || 'all')})</small></span>
-            <button type="button" class="matrix-mini-btn" style="color:var(--danger);background:#ffffff;border:1px solid var(--danger-border);" onclick="App.deleteLongTermTask(${idx})" title="Eliminar tarea a largo plazo">🗑️</button>
-          </div>
-        </th>
-      `;
-    });
-    ths += `</tr>`;
+    let headHtml = `
+      <tr>
+        <th class="col-center">CENTRO</th>
+        <th class="col-group">GRUPO</th>
+    `;
 
-    let rowsHtml = "";
-    ALL_GROUPS.forEach(grp => {
-      const neaeTxt = (state.tareas.neaeProfiles && state.tareas.neaeProfiles[grp.id]) || "";
-      rowsHtml += `
-        <tr>
-          <th class="group-row-th col-lt-group">
-            <span class="header-school-badge ${grp.school}" style="margin-right:6px;">${grp.center}</span>
-            <strong>${escapeHTML(grp.shortName)}</strong>
-          </th>
-          <td class="col-lt-neae">
-            <div style="display:flex;align-items:center;gap:6px;">
-              <input type="text" class="notes-inline-input" placeholder="Sin alumnado NEAE registrado..." value="${escapeHTML(neaeTxt.replace(/\n/g, ' | '))}" onchange="App.updateNeaeProfile('${grp.id}',this.value)" />
+    if (tasks.length === 0) {
+      headHtml += `
+        <th style="font-weight: 500; font-style: italic; color: #94a3b8; text-transform: none; padding-inline-start: 18px; inline-size: 340px; text-align: left;">
+          No hay tareas a largo plazo creadas. Pulsa en "+ Tarea".
+        </th>
+        <th class="col-filler"></th>
+      `;
+    } else {
+      tasks.forEach((t, idx) => {
+        headHtml += `
+          <th class="col-lt-task">
+            <div class="th-content">
+              <span title="${escapeHTML(t.name)}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-inline-size: 124px;">${escapeHTML(t.name)}</span>
+              <div class="th-actions-row">
+                <button type="button" class="th-action-btn" onclick="App.toggleLongTermColumn('${t.id}')" title="Marcar/Desmarcar visibles">✓ Todos</button>
+                <button type="button" class="th-action-btn th-delete-btn" onclick="App.deleteLongTermTask(${idx})" title="Eliminar columna">🗑️</button>
+              </div>
             </div>
+          </th>
+        `;
+      });
+      headHtml += `<th class="col-filler"></th>`;
+    }
+    headHtml += `</tr>`;
+
+    const visibleGroups = getFilteredTareasGroups(weekIdx, true);
+    let rowsHtml = "";
+
+    if (visibleGroups.length === 0) {
+      const colSpan = Math.max(4, tasks.length + 3);
+      rowsHtml = `
+        <tr>
+          <td colspan="${colSpan}" style="text-align:center; padding: 38px 20px; background:#f0fdf4; color:#15803d; font-weight:700;">
+            🎉 ¡Todo al día! No queda ninguna tarea a largo plazo pendiente en los cursos filtrados.
           </td>
-          ${tasks.map(t => {
-            const applies = (t.scope === "all") || (t.scope === grp.center) || (t.scope === grp.level);
-            if (!applies) return `<td class="col-lt-task" style="text-align:center;color:var(--text-muted);">—</td>`;
-            const k = `${t.id}_${grp.id}`;
-            const done = !!ltState[k];
-            return `
-              <td class="col-lt-task" style="text-align:center;">
-                <button type="button" class="task-check-btn ${done ? 'done' : ''}" onclick="App.toggleLongTermCheck('${t.id}','${grp.id}')">
-                  ${done ? "✓ Completado" : "Pendiente"}
-                </button>
-              </td>
-            `;
-          }).join("")}
         </tr>
       `;
-    });
+    } else {
+      visibleGroups.forEach(grp => {
+        const badgeClass = grp.school === "ribarroja" ? "badge-ribarroja" : "badge-manises";
+        const daysLabel = grp.school === "ribarroja" ? "L/X" : "M/J";
 
-    table.innerHTML = `<thead>${ths}</thead><tbody>${rowsHtml}</tbody>`;
+        let cellsHtml = `
+          <td class="col-center">
+            <span class="center-badge ${badgeClass}">${grp.center} (${daysLabel})</span>
+          </td>
+          <td class="col-group">
+            <div class="group-name" style="margin-block-end:0;">${escapeHTML(grp.shortName)}</div>
+          </td>
+        `;
+
+        if (tasks.length === 0) {
+          cellsHtml += `<td style="color:#cbd5e1; padding-inline-start: 18px;">—</td><td class="col-filler"></td>`;
+        } else {
+          tasks.forEach(t => {
+            const applies = isGroupInLongTermTask(t, grp);
+            if (!applies) {
+              cellsHtml += `<td class="col-lt-task"><span class="neae-static-empty">—</span></td>`;
+            } else {
+              const k = `${t.id}_${grp.id}`;
+              const done = !!ltState[k];
+              cellsHtml += `
+                <td class="col-lt-task">
+                  <button type="button" class="status-btn ${done ? 'checked' : ''}" onclick="App.toggleLongTermCheck('${t.id}','${grp.id}')">
+                    <span>${done ? "✓ Hecho" : "Pendiente"}</span>
+                  </button>
+                </td>
+              `;
+            }
+          });
+          cellsHtml += `<td class="col-filler"></td>`;
+        }
+
+        rowsHtml += `<tr>${cellsHtml}</tr>`;
+      });
+    }
+
+    table.innerHTML = `<thead>${headHtml}</thead><tbody>${rowsHtml}</tbody>`;
     scroll.appendChild(table);
     wrap.appendChild(scroll);
     container.appendChild(wrap);
   }
 
-  function addNewLongTermTaskPrompt() {
-    const name = prompt("Nombre de la nueva tarea a largo plazo (ej. Revisión Portfolio 2ª Eval):");
-    if (!name || !name.trim()) return;
-    const scope = prompt("Alcance ('all' para todos, 'Riba-roja', 'Manises', o un nivel como '1º ESO'):", "all") || "all";
+  function openNewLongTermTaskModal() {
+    const body = document.getElementById("new-lt-task-body");
+    if (!body) {
+      addNewLongTermTaskPrompt();
+      return;
+    }
+    const ribaGroups = ALL_GROUPS.filter(g => g.center === "Riba-roja");
+    const maniGroups = ALL_GROUPS.filter(g => g.center === "Manises");
+
+    body.innerHTML = `
+      <div class="form-field-group">
+        <label class="form-field-label" for="lt-f-name">Nombre de la Columna / Tarea</label>
+        <input type="text" id="lt-f-name" class="form-input" placeholder="Ej: Seguimiento Ed, Notas Ed Rev, Rúbrica 1º Trim..." autocomplete="off" />
+      </div>
+
+      <div class="form-field-group">
+        <label class="form-field-label">Aplicar a los grupos</label>
+        <div class="modal-form-row-2col">
+          <label style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;border:1px solid var(--border-medium);background:#f8fafc;cursor:pointer;font-weight:700;">
+            <input type="radio" name="ltScopeOption" value="all" checked onchange="App.toggleLtManualGroupsBox(false)" />
+            <span>Todos los cursos (17)</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;border:1px solid var(--border-medium);background:#f8fafc;cursor:pointer;font-weight:700;">
+            <input type="radio" name="ltScopeOption" value="Riba-roja" onchange="App.toggleLtManualGroupsBox(false)" />
+            <span>🔴 Riba-roja (9)</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;border:1px solid var(--border-medium);background:#f8fafc;cursor:pointer;font-weight:700;">
+            <input type="radio" name="ltScopeOption" value="Manises" onchange="App.toggleLtManualGroupsBox(false)" />
+            <span>🔵 Manises (8)</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;border:1px solid var(--border-medium);background:#f8fafc;cursor:pointer;font-weight:700;">
+            <input type="radio" name="ltScopeOption" value="manual" onchange="App.toggleLtManualGroupsBox(true)" />
+            <span>Selección manual...</span>
+          </label>
+        </div>
+
+        <div id="lt-manual-groups-box" class="modal-form-row-2col" style="display:none; margin-top:8px; padding:10px; border:1px solid var(--border-medium); border-radius:8px; background:#f8fafc; max-block-size:210px; overflow-y:auto;">
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <span class="center-badge badge-ribarroja" style="inline-size:fit-content;margin-bottom:2px;">🔴 Riba-roja (9)</span>
+            ${ribaGroups.map(g => `
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;cursor:pointer;">
+                <input type="checkbox" class="lt-manual-grp-cb" value="${g.id}" checked />
+                <span>${escapeHTML(g.shortName)}</span>
+              </label>
+            `).join("")}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <span class="center-badge badge-manises" style="inline-size:fit-content;margin-bottom:2px;">🔵 Manises (8)</span>
+            ${maniGroups.map(g => `
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;cursor:pointer;">
+                <input type="checkbox" class="lt-manual-grp-cb" value="${g.id}" checked />
+                <span>${escapeHTML(g.shortName)}</span>
+              </label>
+            `).join("")}
+          </div>
+        </div>
+      </div>
+    `;
+
+    openModal("modal-new-lt-task");
+    setTimeout(() => document.getElementById("lt-f-name")?.focus(), 40);
+  }
+
+  function toggleLtManualGroupsBox(show) {
+    const box = document.getElementById("lt-manual-groups-box");
+    if (box) box.style.display = show ? "grid" : "none";
+  }
+
+  function saveNewLongTermTaskModal() {
+    const nameInput = document.getElementById("lt-f-name");
+    const name = (nameInput && nameInput.value.trim()) || "";
+    if (!name) {
+      showToast("⚠️ Escribe un nombre para la columna / tarea");
+      nameInput?.focus();
+      return;
+    }
+
+    const scopeRadio = document.querySelector('input[name="ltScopeOption"]:checked');
+    const scope = scopeRadio ? scopeRadio.value : "all";
+    let groups = [];
+    if (scope === "manual") {
+      groups = Array.from(document.querySelectorAll(".lt-manual-grp-cb"))
+        .filter(cb => cb.checked)
+        .map(cb => cb.value);
+      if (groups.length === 0) {
+        showToast("⚠️ Selecciona al menos un grupo");
+        return;
+      }
+    }
+
     pushUndoSnapshot();
     state.tareas.longTermTasks.push({
       id: "lt_" + Date.now(),
-      name: name.trim(),
-      scope: scope.trim()
+      name,
+      scope,
+      groups
+    });
+    closeModal("modal-new-lt-task");
+    persistAll(false);
+    renderWorkspace();
+    showToast(`📌 Columna "${name}" añadida`);
+  }
+
+  function addNewLongTermTaskPrompt() {
+    openNewLongTermTaskModal();
+  }
+
+  function toggleLongTermColumn(taskId) {
+    const task = (state.tareas.longTermTasks || []).find(t => t.id === taskId);
+    if (!task) return;
+    const visibleGroups = getFilteredTareasGroups(state.currentWeekIndex, true)
+      .filter(g => isGroupInLongTermTask(task, g));
+    if (visibleGroups.length === 0) return;
+
+    pushUndoSnapshot();
+    const allDone = visibleGroups.every(g => !!state.tareas.longTermState[`${taskId}_${g.id}`]);
+    visibleGroups.forEach(g => {
+      state.tareas.longTermState[`${taskId}_${g.id}`] = !allDone;
     });
     persistAll(false);
     renderWorkspace();
@@ -2784,7 +3359,7 @@
 
   function deleteLongTermTask(idx) {
     const t = state.tareas.longTermTasks[idx];
-    if (!t || !confirm(`¿Eliminar la tarea a largo plazo "${t.name}"?`)) return;
+    if (!t || !confirm(`¿Eliminar la columna "${t.name}"?`)) return;
     pushUndoSnapshot();
     state.tareas.longTermTasks.splice(idx, 1);
     persistAll(false);
@@ -2800,15 +3375,7 @@
   }
 
   function updateNeaeProfile(groupId, val) {
-    pushUndoSnapshot();
-    if (!val || !val.trim()) {
-      delete state.tareas.neaeProfiles[groupId];
-    } else {
-      state.tareas.neaeProfiles[groupId] = val.trim().replace(/\s*\|\s*/g, "\n");
-    }
-    persistAll(false);
-    renderWorkspace();
-    showToast("🧩 Perfil NEAE actualizado");
+    onNeaeTextareaInput(groupId, val);
   }
 
   // ==========================================================================
@@ -3910,6 +4477,10 @@
     // Tareas
     setTareasFilter(f) { state.tareasFilter = f; renderWorkspace(); },
     toggleTareasHideDone() { state.tareasHideDone = !state.tareasHideDone; renderWorkspace(); },
+    onNeaeTextareaInput,
+    onPlannerLinkedTaskInput,
+    togglePlannerLinkedTaskDone,
+    onStandardTaskTextInput,
     toggleTareasCheck,
     togglePlannerPrintFromTareas,
     promptSetNextWeekPrint,
@@ -3917,7 +4488,11 @@
     promptConfigurableTaskText,
     onTareasNoteInput,
     bulkToggleTareasColumn,
+    openNewLongTermTaskModal,
+    toggleLtManualGroupsBox,
+    saveNewLongTermTaskModal,
     addNewLongTermTaskPrompt,
+    toggleLongTermColumn,
     deleteLongTermTask,
     toggleLongTermCheck,
     updateNeaeProfile,

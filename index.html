@@ -360,6 +360,23 @@
     </div>
   </div>
 
+  <!-- ======================================================================
+       MODAL 10: NUEVA TAREA / COLUMNA A LARGO PLAZO
+       ====================================================================== -->
+  <div id="modal-new-lt-task" class="modal-backdrop" onclick="if(event.target===this) App.closeModal('modal-new-lt-task')">
+    <div class="modal-dialog-card" style="inline-size: min(560px, 96vw);">
+      <div class="modal-dialog-header">
+        <span class="modal-dialog-title">📌 Nueva Tarea / Columna a Largo Plazo</span>
+        <button type="button" class="modal-close-x" onclick="App.closeModal('modal-new-lt-task')">✕</button>
+      </div>
+      <div id="new-lt-task-body" class="modal-dialog-body"></div>
+      <div class="modal-dialog-footer">
+        <button type="button" class="corporate-btn" onclick="App.closeModal('modal-new-lt-task')">Cancelar</button>
+        <button type="button" class="corporate-btn primary" onclick="App.saveNewLongTermTaskModal()">➕ Añadir Columna</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast de Notificación -->
   <div id="app-toast" class="toast-notification" role="status" aria-live="polite"></div>
 

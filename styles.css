@@ -1893,13 +1893,17 @@ button {
 .cal-month-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(170px, 1fr)) repeat(2, minmax(90px, 0.55fr));
+  grid-template-rows: 32px;
   min-inline-size: 1040px;
   grid-auto-rows: 136px;
   gap: 8px;
 }
 
 .cal-weekday-hdr {
-  padding: 8px 10px;
+  block-size: 32px;
+  min-block-size: 32px;
+  max-block-size: 32px;
+  padding: 4px 10px;
   border-radius: var(--radius-sm);
   background: #f1f5f9;
   color: #0f172a;
@@ -1909,6 +1913,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  box-sizing: border-box;
 }
 
 .cal-weekday-hdr.ribarroja {
@@ -2096,7 +2101,7 @@ button {
 }
 
 /* ==========================================================================
-   5. APARTADO TAREAS (CONTROL SEMANAL Y LARGO PLAZO)
+   5. APARTADO TAREAS (CONTROL SEMANAL Y LARGO PLAZO — ESTILO COLUMNAS CLÁSICO ARMONIZADO)
    ========================================================================== */
 
 .tareas-view-container {
@@ -2111,9 +2116,10 @@ button {
 .tareas-table-scroll {
   flex: 1;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
-  padding: 0 16px 16px 16px;
+  padding: 10px 14px 16px 14px;
 }
 
 .corporate-tasks-table {
@@ -2122,173 +2128,441 @@ button {
   border-spacing: 0;
   background: var(--bg-surface);
   border: 1px solid var(--border-medium);
-  border-block-start: none;
-  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs);
+  text-align: left;
+}
+
+.corporate-tasks-table tbody tr {
+  block-size: 72px;
 }
 
 .corporate-tasks-table thead th {
   position: sticky;
   inset-block-start: 0;
-  z-index: 15;
-  background: #f1f5f9;
-  color: #0f172a;
+  z-index: 20;
+  background: #f8fafc;
+  color: #475569;
   padding: 8px 10px;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   text-align: center;
-  border-block-end: 2px solid #cbd5e1;
-  border-inline-end: 1px solid #cbd5e1;
+  border-block-end: 1.5px solid var(--border-medium);
+  border-inline-end: 1px solid var(--border-light);
+  block-size: 54px;
+  box-sizing: border-box;
   white-space: nowrap;
 }
 
-.corporate-tasks-table thead th:first-child {
-  text-align: left;
-  inset-inline-start: 0;
-  z-index: 20;
+.corporate-tasks-table thead th.th-neae {
+  background: #faf5ff !important;
+  color: #6b21a8 !important;
 }
 
-.corporate-tasks-table tbody td,
-.corporate-tasks-table tbody th {
-  padding: 7px 10px;
+.corporate-tasks-table tbody td {
+  block-size: 72px;
+  box-sizing: border-box;
+  padding: 7px 9px;
   border-block-end: 1px solid var(--border-light);
   border-inline-end: 1px solid var(--border-light);
   vertical-align: middle;
+  background: #ffffff;
 }
 
-.corporate-tasks-table tbody th.group-row-th {
+.corporate-tasks-table tbody td.td-neae {
+  background: #faf5ff;
+}
+
+.corporate-tasks-table tbody tr:hover td {
+  background: #f8fafc;
+}
+
+.corporate-tasks-table tbody tr:hover td.td-neae {
+  background: #f3e8ff;
+}
+
+/* Columnas Fijas Izquierda: CENTRO (0px) y GRUPO (126px) */
+.corporate-tasks-table .col-center {
+  inline-size: 126px;
+  min-inline-size: 126px;
+  max-inline-size: 126px;
   position: sticky;
   inset-inline-start: 0;
-  z-index: 8;
-  background: var(--bg-surface);
-  text-align: left;
-  min-inline-size: 215px;
-}
-
-.corporate-tasks-table tbody tr:hover td,
-.corporate-tasks-table tbody tr:hover th.group-row-th {
-  background: var(--bg-subtle);
-}
-
-.corporate-tasks-table tbody tr.school-section-row td {
-  background: var(--bg-muted);
-  font-weight: 800;
-  font-size: 11px;
-  color: var(--text-main);
-  padding: 6px 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-/* Vista de Tareas a Largo Plazo: Estilo Hoja Excel con columnas fijas y estrechas */
-.corporate-tasks-table.tareas-long-term-table {
-  inline-size: max-content;
-  min-inline-size: 0;
-  table-layout: fixed;
-}
-
-.tareas-long-term-table th.col-lt-group,
-.tareas-long-term-table td.col-lt-group {
-  inline-size: 190px;
-  min-inline-size: 190px;
-  max-inline-size: 190px;
-  box-sizing: border-box;
   text-align: left;
 }
 
-.tareas-long-term-table th.col-lt-neae,
-.tareas-long-term-table td.col-lt-neae {
-  inline-size: 240px;
-  min-inline-size: 240px;
-  max-inline-size: 240px;
-  box-sizing: border-box;
+.corporate-tasks-table thead th.col-center {
+  z-index: 35;
+  background: #f8fafc;
 }
 
-.tareas-long-term-table th.col-lt-task,
-.tareas-long-term-table td.col-lt-task {
-  inline-size: 155px;
-  min-inline-size: 155px;
-  max-inline-size: 155px;
-  box-sizing: border-box;
+.corporate-tasks-table tbody td.col-center {
+  z-index: 15;
+  background: #ffffff;
+}
+
+.corporate-tasks-table .col-group {
+  inline-size: 230px;
+  min-inline-size: 230px;
+  max-inline-size: 230px;
+  position: sticky;
+  inset-inline-start: 126px;
+  text-align: left;
+  border-inline-end: 2px solid var(--border-medium) !important;
+  box-shadow: 3px 0 5px -2px rgba(15, 23, 42, 0.06);
+}
+
+.corporate-tasks-table thead th.col-group {
+  z-index: 35;
+  background: #f8fafc;
+}
+
+.corporate-tasks-table tbody td.col-group {
+  z-index: 15;
+  background: #ffffff;
+}
+
+.corporate-tasks-table tbody tr:hover td.col-center,
+.corporate-tasks-table tbody tr:hover td.col-group {
+  background: #f8fafc;
+}
+
+/* En Largo Plazo la columna de Grupo no lleva textarea NEAE y es más compacta (165px) */
+.tareas-long-term-table .col-group {
+  inline-size: 165px;
+  min-inline-size: 165px;
+  max-inline-size: 165px;
+}
+
+/* Columnas de Tareas Semanales */
+.corporate-tasks-table .weekly-task-col {
+  text-align: center;
+  min-inline-size: 132px;
+}
+
+/* Columnas de Tareas a Largo Plazo: ancho exacto de 140px + columna filler tipo Excel */
+.corporate-tasks-table .col-lt-task {
+  inline-size: 140px;
+  min-inline-size: 140px;
+  max-inline-size: 140px;
   text-align: center;
 }
 
-.tareas-long-term-table .task-check-btn {
-  min-inline-size: 120px;
-  max-inline-size: 135px;
-  padding: 4px 6px;
-  font-size: 10.5px;
+.corporate-tasks-table .col-filler {
+  inline-size: auto;
+  padding: 0 !important;
+  background: #ffffff;
+  border-inline-end: none;
 }
 
-.task-status-cell {
+.corporate-tasks-table thead th.col-filler {
+  background: #f8fafc;
+}
+
+/* Cabecera interna de cada columna de tarea */
+.th-content {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 3px;
 }
 
-.task-check-btn {
+.th-title-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.th-actions-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+}
+
+.th-action-btn {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--border-medium);
+  background: #ffffff;
+  color: #475569;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-transform: none;
+  letter-spacing: normal;
+  block-size: 20px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  min-inline-size: 110px;
-  padding: 5px 10px;
-  border-radius: var(--radius-sm);
+}
+
+.th-action-btn:hover {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #86efac;
+}
+
+.th-delete-btn:hover {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+  border-color: #fecaca !important;
+}
+
+/* Etiqueta de columna 100% completada */
+.col-status-tag {
+  display: none;
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #15803d;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  padding: 1px 5px;
+  border-radius: 4px;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+}
+
+.col-status-tag.active {
+  display: inline-block;
+}
+
+/* Insignias de Centro en Columna 1 */
+.center-badge {
+  display: inline-flex;
+  align-items: center;
   font-size: 11px;
-  font-weight: 700;
-  border: 1px solid var(--border-medium);
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-  transition: all 0.12s ease;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
-.task-check-btn:hover {
-  background: var(--bg-subtle);
-  border-color: var(--border-strong);
+.badge-ribarroja {
+  background: #ffe4e6;
+  color: #9f1239;
+  border: 1px solid #fecdd3;
 }
 
-.task-check-btn.done {
-  background: var(--success-soft);
-  border-color: var(--success-border);
-  color: var(--success);
+.badge-manises {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
 }
 
-.task-check-btn.overdue {
-  background: var(--warning-soft);
-  border-color: #f59e0b;
-  color: #b45309;
+/* Nombre del Grupo y Recuadro Morado de Necesidades NEAE */
+.group-name-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin-block-end: 3px;
 }
 
-.task-check-btn.print-pending-nextweek {
-  background: var(--purple-soft);
-  border-color: #c084fc;
-  color: #6b21a8;
+.group-name {
+  font-weight: 800;
+  font-size: 13px;
+  color: #0f172a;
+  line-height: 1.15;
 }
 
-.task-subtext-preview {
-  font-size: 10px;
-  color: var(--text-secondary);
-  max-inline-size: 185px;
-  text-align: center;
-  line-height: 1.25;
-  word-break: break-word;
-}
-
-.notes-inline-input {
+.neae-textarea {
   inline-size: 100%;
-  min-inline-size: 150px;
-  padding: 5px 8px;
-  border-radius: var(--radius-xs);
+  min-block-size: 38px;
+  max-block-size: 38px;
+  resize: none;
+  font-size: 11px;
+  color: #581c87;
+  border: 1px solid #d8b4fe;
+  border-radius: 6px;
+  padding: 3px 6px;
+  background: #faf5ff;
+  outline: none;
+  font-family: inherit;
+  line-height: 1.25;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.neae-textarea:focus {
+  border-color: #9333ea;
+  background: #ffffff;
+  box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.12);
+}
+
+.neae-textarea::placeholder {
+  color: #c084fc;
+  font-style: italic;
+}
+
+.neae-static-empty {
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 700;
+  user-select: none;
+  display: inline-block;
+}
+
+/* Botón de Estado (Rojo Pastel Discreto para Pendiente, Verde para Hecho, Ámbar para Atrasado) */
+.status-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  inline-size: 100%;
+  min-inline-size: 96px;
+  min-block-size: 27px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px dashed #fca5a5;
+  background: #fff1f2;
+  color: #be123c;
+  font-size: 11.5px;
+  font-weight: 700;
+  user-select: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  box-sizing: border-box;
+}
+
+.status-btn:hover {
+  background: #ffe4e6;
+  border-color: #f43f5e;
+}
+
+.status-btn.checked {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.status-btn.checked:hover {
+  background: #bbf7d0;
+  border-color: #4ade80;
+}
+
+.status-btn.overdue {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+  box-shadow: 0 0 0 1px #fde68a;
+}
+
+.status-btn.neae-pending {
+  background: #fff1f2;
+  color: #7c3aed;
+  border: 1px dashed #d8b4fe;
+}
+
+.overdue-tag {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1.1;
+}
+
+/* Recuadro de Texto Arriba + Botón Condicional Abajo (Impresión, Avisos, Educamos, Plataformas, Notas) */
+.task-cell-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: stretch;
+  inline-size: 100%;
+}
+
+.task-inline-input {
+  inline-size: 100%;
+  box-sizing: border-box;
+  padding: 3px 6px;
+  font-size: 11.5px;
   border: 1px solid var(--border-medium);
-  background: var(--bg-subtle);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--text-main);
+  outline: none;
+  transition: all 0.15s ease;
+  block-size: 25px;
+  line-height: 1;
+  font-family: inherit;
+}
+
+.task-inline-input:focus {
+  border-color: var(--primary);
+  background: #f8fafc;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.task-inline-input::placeholder {
+  color: #94a3b8;
+  font-style: italic;
   font-size: 11px;
 }
 
-.notes-inline-input:focus {
-  outline: none;
+.task-inline-input.has-content {
+  border-color: #93c5fd;
+  background: #f0f7ff;
+  color: #1e3a8a;
+  font-weight: 700;
+}
+
+.task-btn-wrap {
+  inline-size: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.task-btn-idle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 100%;
+  block-size: 27px;
+  border-radius: 6px;
+  border: 1px dashed #e2e8f0;
+  background: #f8fafc;
+  color: #94a3b8;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: text;
+  user-select: none;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.task-btn-idle:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #64748b;
+}
+
+/* Columna final de Notas / Casos puntuales */
+.note-cell {
+  min-inline-size: 185px;
+}
+
+.note-input {
+  inline-size: 100%;
+  padding: 6px 8px;
+  font-size: 12px;
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
   background: #ffffff;
+  color: var(--text-main);
+  outline: none;
+}
+
+.note-input:focus {
   border-color: var(--primary);
+  background: #f8fafc;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.note-input::placeholder {
+  color: #94a3b8;
+  font-style: italic;
 }
 
 /* ==========================================================================
@@ -2602,12 +2876,24 @@ button {
     padding: 6px 6px;
   }
 
-  .corporate-tasks-table tbody th.group-row-th,
-  .tareas-long-term-table th.col-lt-group,
-  .tareas-long-term-table td.col-lt-group {
-    inline-size: 135px;
-    min-inline-size: 135px;
-    max-inline-size: 135px;
+  .corporate-tasks-table .col-center {
+    inline-size: 92px;
+    min-inline-size: 92px;
+    max-inline-size: 92px;
+    padding: 6px 5px;
+  }
+
+  .corporate-tasks-table .center-badge {
+    font-size: 9.5px;
+    padding: 2px 6px;
+  }
+
+  .corporate-tasks-table .col-group,
+  .tareas-long-term-table .col-group {
+    inline-size: 145px;
+    min-inline-size: 145px;
+    max-inline-size: 145px;
+    inset-inline-start: 92px;
     padding: 6px 6px;
   }
 
