@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Programación Docente 26·27 — Planner &amp; Tareas</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -23,7 +23,7 @@
       <div class="topbar-left">
         <div class="brand-badge" title="Sistema Unificado de Programación y Control Docente 2026-2027">
           <span>🏛️</span>
-          <span>PROGRAMACIÓN</span>
+          <span class="brand-title-text">PROGRAMACIÓN</span>
           <span class="brand-year">26·27</span>
         </div>
 
@@ -159,7 +159,7 @@
         <button type="button" class="modal-close-x" onclick="App.closeModal('modal-edit-session')">✕</button>
       </div>
       <div class="modal-dialog-body">
-        <div style="display: grid; grid-template-columns: 1fr 180px auto; gap: 10px; align-items: end;">
+        <div class="modal-form-row-top">
           <div class="form-field-group">
             <label class="form-field-label" for="edit-f-tema">Título / Tema de la Sesión</label>
             <input type="text" id="edit-f-tema" class="form-input" placeholder="Ej. ¿Quiénes somos?" />
@@ -196,7 +196,7 @@
           <textarea id="edit-f-actividades" class="form-textarea" style="min-block-size: 130px;" placeholder="Detalla la explicación, PPT, fichas, rutinas o proyectos..."></textarea>
         </div>
 
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+        <div class="modal-form-row-3col">
           <div class="form-field-group">
             <label class="form-field-label" for="edit-f-avisos" style="display: flex; align-items: center; justify-content: space-between;">
               <span>📢 Avisos de clase</span>
@@ -228,13 +228,13 @@
           </div>
         </div>
       </div>
-      <div class="modal-dialog-footer" style="justify-content: space-between;">
+      <div class="modal-dialog-footer" style="justify-content: space-between; flex-wrap: wrap;">
         <div style="display: flex; gap: 6px; flex-wrap: wrap;">
           <button type="button" class="corporate-btn" onclick="App.shiftSingleCourseCascadeFromModal(-1)" title="Desplazar esta clase y anteriores 1 semana hacia atrás (-1)">⏪ Cascada -1</button>
           <button type="button" class="corporate-btn" onclick="App.shiftSingleCourseCascadeFromModal(1)" title="Desplazar esta clase y siguientes 1 semana hacia adelante (+1)">⏩ Cascada +1</button>
           <button type="button" class="corporate-btn" style="color: var(--danger); border-color: var(--danger-border);" onclick="App.sendModalSessionToReserveAndClear()" title="Guardar contenido en Cajón de Reserva y vaciar hueco">📦 A Reserva y vaciar</button>
         </div>
-        <div style="display: flex; gap: 8px;">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
           <button type="button" class="corporate-btn" onclick="App.closeModal('modal-edit-session')">Cancelar</button>
           <button type="button" class="corporate-btn primary" onclick="App.saveEditSessionModal()">💾 Guardar Cambios</button>
         </div>
@@ -268,9 +268,9 @@
         <button type="button" class="modal-close-x" onclick="App.closeModal('modal-calendar-event')">✕</button>
       </div>
       <div id="cal-modal-body" class="modal-dialog-body"></div>
-      <div class="modal-dialog-footer" style="justify-content: space-between;">
+      <div class="modal-dialog-footer" style="justify-content: space-between; flex-wrap: wrap;">
         <button type="button" id="btn-cal-clear-event" class="corporate-btn" style="color: var(--danger);" onclick="App.clearCalendarDayConfig()">🗑️ Restablecer día normal</button>
-        <div style="display: flex; gap: 8px;">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
           <button type="button" class="corporate-btn" onclick="App.closeModal('modal-calendar-event')">Cancelar</button>
           <button type="button" class="corporate-btn primary" onclick="App.saveCalendarDayConfig()">💾 Guardar</button>
         </div>

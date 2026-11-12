@@ -102,10 +102,18 @@ textarea {
   font-family: inherit;
   font-size: inherit;
   color: inherit;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+label {
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 button {
-  cursor: pointer;
   background: none;
   border: none;
 }
@@ -607,6 +615,7 @@ button {
   flex: 1;
   overflow-y: auto;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
   background: var(--bg-app);
@@ -618,7 +627,8 @@ button {
   inset-block-start: 0;
   z-index: 25;
   display: grid;
-  grid-template-columns: 52px repeat(5, minmax(220px, 1fr));
+  grid-template-columns: 52px repeat(5, minmax(240px, 1fr));
+  min-inline-size: 1252px;
   background: var(--bg-surface);
   border-block-end: 2px solid var(--border-medium);
   box-shadow: var(--shadow-xs);
@@ -634,9 +644,13 @@ button {
 }
 
 .sticky-header-cell.time-axis-corner {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 32;
   align-items: center;
   justify-content: center;
   background: var(--bg-subtle);
+  border-inline-end: 1px solid var(--border-medium);
 }
 
 .sticky-header-cell.ribarroja {
@@ -776,12 +790,15 @@ button {
 .week-body-grid {
   position: relative;
   display: grid;
-  grid-template-columns: 52px repeat(5, minmax(220px, 1fr));
+  grid-template-columns: 52px repeat(5, minmax(240px, 1fr));
+  min-inline-size: 1252px;
   min-block-size: 640px;
 }
 
 .time-axis-column {
-  position: relative;
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 18;
   background: var(--bg-subtle);
   border-inline-end: 1px solid var(--border-medium);
   user-select: none;
@@ -1410,6 +1427,7 @@ button {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+  min-inline-size: 0;
 }
 
 .filter-pill-group {
@@ -1420,6 +1438,8 @@ button {
   border-radius: var(--radius-sm);
   padding: 2px;
   gap: 2px;
+  flex-wrap: wrap;
+  max-inline-size: 100%;
 }
 
 .filter-pill-btn {
@@ -1784,7 +1804,7 @@ button {
 
 .tema-sessions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
   gap: 10px;
   padding: 12px 14px;
 }
@@ -1863,6 +1883,8 @@ button {
 .cal-grid-scroll {
   flex: 1;
   overflow-y: auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
   padding: 12px 16px;
@@ -1871,6 +1893,7 @@ button {
 .cal-month-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(170px, 1fr)) repeat(2, minmax(90px, 0.55fr));
+  min-inline-size: 1040px;
   grid-auto-rows: 136px;
   gap: 8px;
 }
@@ -2428,4 +2451,250 @@ button {
 .toast-notification.visible {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* Rejillas de Formularios en Modales (Adaptables a Móvil e iPad) */
+.modal-form-row-top {
+  display: grid;
+  grid-template-columns: 1fr 180px auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.modal-form-row-3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.modal-form-row-2col {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.modal-form-row-2col-asym {
+  display: grid;
+  grid-template-columns: 1fr 160px;
+  gap: 10px;
+}
+
+/* ==========================================================================
+   DISEÑO RESPONSIVE PARA IPAD / TABLETS Y MÓVILES (SIN SOLAPAMIENTOS)
+   ========================================================================== */
+
+/* 1. iPad (Vertical y Horizontal) y Pantallas Medianas (<= 1179px) */
+@media (max-width: 1179px) {
+  .corporate-topbar {
+    block-size: auto;
+    min-block-size: 50px;
+    max-block-size: none;
+    flex-wrap: wrap;
+    padding-block: 6px;
+    padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
+    row-gap: 6px;
+    column-gap: 8px;
+    overflow: visible;
+  }
+
+  .topbar-left {
+    order: 1;
+  }
+
+  .topbar-right {
+    order: 2;
+    margin-inline-start: auto;
+  }
+
+  .topbar-center {
+    order: 3;
+    flex: 1 1 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+    border-block-start: 1px solid var(--border-light);
+    padding-block-start: 6px;
+  }
+
+  .matrix-table-scroll,
+  .tareas-table-scroll {
+    -webkit-overflow-scrolling: touch;
+    padding-inline: 10px;
+  }
+
+  .subview-toolbar {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+}
+
+/* 2. Dispositivos Táctiles / Tablets Verticales (<= 820px) */
+@media (max-width: 820px) {
+  /* Evita el auto-zoom de Safari en iOS al tocar inputs dentro de modales */
+  .modal-dialog-card .form-input,
+  .modal-dialog-card .form-textarea,
+  .modal-dialog-card .form-select {
+    font-size: 16px;
+  }
+}
+
+/* 3. Móviles (iPhone / Android <= 680px) */
+@media (max-width: 680px) {
+  .brand-badge .brand-title-text {
+    display: none;
+  }
+
+  .brand-badge {
+    padding: 4px 6px;
+    gap: 4px;
+  }
+
+  .topbar-center {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #tabs-planner {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    inline-size: 100%;
+    gap: 4px;
+  }
+
+  #tabs-tareas {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    inline-size: 100%;
+    gap: 4px;
+  }
+
+  .view-tab-btn,
+  #tabs-tareas .view-tab-btn {
+    inline-size: 100%;
+    padding: 6px 8px;
+    font-size: 11.5px;
+    justify-content: center;
+  }
+
+  .week-nav-cluster {
+    inline-size: 100%;
+    min-inline-size: 0;
+    max-inline-size: none;
+    justify-content: space-between;
+    padding: 3px 6px;
+  }
+
+  .week-selector-pill {
+    flex: 1;
+    inline-size: auto;
+    min-inline-size: 0;
+    max-inline-size: none;
+  }
+
+  /* Reducir ancho de columna fija izquierda en tablas para dejar espacio de lectura en móvil */
+  .replicate-matrix-table thead th.sticky-group-col,
+  .replicate-matrix-table tbody th.sticky-group-row-hdr {
+    inline-size: 130px;
+    min-inline-size: 130px;
+    max-inline-size: 130px;
+    padding: 6px 6px;
+  }
+
+  .corporate-tasks-table tbody th.group-row-th,
+  .tareas-long-term-table th.col-lt-group,
+  .tareas-long-term-table td.col-lt-group {
+    inline-size: 135px;
+    min-inline-size: 135px;
+    max-inline-size: 135px;
+    padding: 6px 6px;
+  }
+
+  /* Barras de herramientas y portapapeles compactas */
+  .replication-clipboard-bar {
+    padding: 6px 10px;
+    gap: 8px;
+  }
+
+  .clip-actions-right {
+    inline-size: 100%;
+    justify-content: space-between;
+  }
+
+  .bank-content-scroll {
+    padding: 10px;
+  }
+
+  .tema-card-header {
+    padding: 8px 10px;
+  }
+
+  .tema-sessions-grid {
+    padding: 10px;
+    grid-template-columns: 1fr;
+  }
+
+  .cal-grid-scroll {
+    padding: 8px 10px;
+  }
+
+  /* Modales a ancho completo y filas apiladas sin columnas estrechas */
+  .modal-backdrop {
+    padding: 8px;
+  }
+
+  .modal-dialog-card {
+    inline-size: 100% !important;
+    max-block-size: 94dvh;
+  }
+
+  .modal-dialog-header,
+  .modal-dialog-body,
+  .modal-dialog-footer {
+    padding: 10px 12px;
+  }
+
+  .modal-form-row-top,
+  .modal-form-row-3col,
+  .modal-form-row-2col,
+  .modal-form-row-2col-asym {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+/* 4. Móviles Pequeños (<= 390px) */
+@media (max-width: 390px) {
+  .main-module-switch {
+    inline-size: 158px;
+    min-inline-size: 158px;
+    max-inline-size: 158px;
+  }
+
+  .module-btn {
+    inline-size: 74px;
+    min-inline-size: 74px;
+    max-inline-size: 74px;
+    font-size: 11px;
+    padding: 4px 4px;
+  }
+
+  .topbar-right {
+    gap: 4px;
+  }
+
+  .top-icon-btn {
+    inline-size: 28px;
+    min-inline-size: 28px;
+    block-size: 28px;
+    min-block-size: 28px;
+    font-size: 12px;
+  }
+
+  .cloud-pill-btn {
+    block-size: 28px;
+    min-block-size: 28px;
+    padding-inline: 6px;
+  }
 }

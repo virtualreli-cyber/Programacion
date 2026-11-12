@@ -521,7 +521,7 @@
     if (weekNav) {
       const showWeekNav = (state.activeModule === "planner" && (state.plannerView === "semanal" || state.plannerView === "replicar")) ||
                           (state.activeModule === "tareas" && state.tareasView === "semanal");
-      weekNav.style.display = showWeekNav ? "inline-flex" : "none";
+      weekNav.style.display = showWeekNav ? "" : "none";
     }
 
     // 2. Botones Undo / Redo y Cajón de Reserva
@@ -579,7 +579,7 @@
       const key = customKey || this.getViewKey();
       const ws = document.getElementById("main-workspace");
       if (!ws) return;
-      const scrollEl = ws.querySelector(".week-view-wrapper, .matrix-table-scroll, .bank-view-container, .calendar-view-container, .tareas-table-scroll") || ws;
+      const scrollEl = ws.querySelector(".week-view-wrapper, .matrix-table-scroll, .bank-content-scroll, .cal-grid-scroll, .bank-view-container, .calendar-view-container, .tareas-table-scroll") || ws;
 
       this.positions[key] = {
         top: scrollEl ? scrollEl.scrollTop : 0,
@@ -599,7 +599,7 @@
       const apply = () => {
         const ws = document.getElementById("main-workspace");
         if (!ws) return;
-        const scrollEl = ws.querySelector(".week-view-wrapper, .matrix-table-scroll, .bank-view-container, .calendar-view-container, .tareas-table-scroll") || ws;
+        const scrollEl = ws.querySelector(".week-view-wrapper, .matrix-table-scroll, .bank-content-scroll, .cal-grid-scroll, .bank-view-container, .calendar-view-container, .tareas-table-scroll") || ws;
         if (scrollEl) {
           scrollEl.scrollTop = saved.top;
           scrollEl.scrollLeft = saved.left;
@@ -627,6 +627,8 @@
     if (e.target && e.target.classList && (
       e.target.classList.contains("week-view-wrapper") ||
       e.target.classList.contains("matrix-table-scroll") ||
+      e.target.classList.contains("bank-content-scroll") ||
+      e.target.classList.contains("cal-grid-scroll") ||
       e.target.classList.contains("bank-view-container") ||
       e.target.classList.contains("calendar-view-container") ||
       e.target.classList.contains("tareas-table-scroll")
@@ -641,8 +643,8 @@
     state.activeModule = mod;
     document.getElementById("btn-mod-planner").classList.toggle("active", mod === "planner");
     document.getElementById("btn-mod-tareas").classList.toggle("active", mod === "tareas");
-    document.getElementById("tabs-planner").style.display = (mod === "planner") ? "inline-flex" : "none";
-    document.getElementById("tabs-tareas").style.display = (mod === "tareas") ? "inline-flex" : "none";
+    document.getElementById("tabs-planner").style.display = (mod === "planner") ? "" : "none";
+    document.getElementById("tabs-tareas").style.display = (mod === "tareas") ? "" : "none";
     updateTopbarBadges();
     renderWorkspace({ skipCapture: true });
   }
@@ -808,13 +810,17 @@
       const fIdx = parseInt(el.dataset.franja, 10);
       if (isNaN(fIdx) || fIdx < 0 || fIdx >= numFranjas) return;
       if (el.classList.contains("session-card")) {
+        const topBar = el.querySelector(".card-top-bar");
+        const titleRow = el.querySelector(".card-title-row");
         const contentEl = el.querySelector(".inline-content");
         const metaRows = Array.from(el.querySelectorAll(".inline-meta-row"));
         const suspBanner = el.querySelector(".card-suspended-banner");
+        const topH = topBar ? Math.max(26, topBar.offsetHeight) : 28;
+        const titleH = titleRow ? Math.max(24, titleRow.offsetHeight) : 26;
         const cH = contentEl ? Math.max(68, contentEl.scrollHeight) : 68;
         const mH = metaRows.reduce((acc, r) => acc + Math.max(22, r.offsetHeight || 24) + 3, 0);
-        const sH = suspBanner ? 24 : 0;
-        const needed = 28 + 26 + sH + cH + mH + 18;
+        const sH = suspBanner ? Math.max(24, suspBanner.offsetHeight) : 0;
+        const needed = topH + titleH + sH + cH + mH + 18;
         if (needed > franjaHeights[fIdx]) franjaHeights[fIdx] = needed;
       } else if (el.classList.contains("static-slot-block")) {
         const contentEl = el.querySelector(".static-slot-textarea");
@@ -2955,7 +2961,7 @@
     body.innerHTML = `
       <div class="form-field-group">
         <label class="form-field-label">1. Estado del Día</label>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+        <div class="modal-form-row-3col">
           <button type="button" id="cal-opt-lectivo" class="conflict-option-btn" style="justify-content:center;font-weight:800;${modeVal === 'lectivo' ? 'border-color:var(--success);background:var(--success-soft);' : ''}" onclick="App.setCalModalMode('lectivo')">
             🟢 Lectivo Normal
           </button>
@@ -2975,14 +2981,14 @@
         </div>
 
         <div id="cal-groups-selector-wrap" class="form-field-group" style="display:${modeVal === 'evento' ? 'flex' : 'none'};">
-          <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
             <label class="form-field-label">¿Qué grupos de este día NO tienen clase por el evento?</label>
-            <div style="display:flex;gap:4px;">
+            <div style="display:flex;gap:4px;flex-wrap:wrap;">
               <button type="button" class="filter-pill-btn" onclick="App.setAllCalModalGroups(true)">Suspender todos</button>
               <button type="button" class="filter-pill-btn" onclick="App.setAllCalModalGroups(false)">Ninguno</button>
             </div>
           </div>
-          <div id="cal-groups-chips-list" style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:4px;">
+          <div id="cal-groups-chips-list" class="modal-form-row-2col" style="margin-top:4px;">
             ${groups.map(g => {
               const checked = currentSuspended.includes(g.course);
               return `
@@ -3145,15 +3151,15 @@
 
     body.innerHTML = `
       <div class="form-field-group">
-        <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
           <label class="form-field-label">1. Selecciona los grupos destino (${escapeHTML(ctx.level)})</label>
-          <div style="display:flex;gap:4px;">
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
             <button type="button" class="filter-pill-btn" onclick="App.selectBankDeployGroups('all')">Todos</button>
             <button type="button" class="filter-pill-btn" onclick="App.selectBankDeployGroups('ribarroja')">Solo Riba-roja</button>
             <button type="button" class="filter-pill-btn" onclick="App.selectBankDeployGroups('manises')">Solo Manises</button>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:4px;">
+        <div class="modal-form-row-2col" style="margin-top:4px;">
           ${levelGroups.map(g => `
             <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;border:1px solid var(--border-medium);background:#fff;cursor:pointer;">
               <input type="checkbox" class="bank-deploy-grp-cb" data-school="${g.school}" value="${g.id}" checked onchange="App.updateBankDeployPreview()" />
@@ -3164,7 +3170,7 @@
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="modal-form-row-2col">
         <div class="form-field-group">
           <label class="form-field-label" for="bank-deploy-start-week">2. Semana de inicio</label>
           <select id="bank-deploy-start-week" class="form-select" onchange="App.updateBankDeployPreview()">
@@ -3332,7 +3338,7 @@
     activeBankEditContext = { type: "session", level, tIdx, sIdx };
     document.getElementById("bank-edit-title").textContent = isNew ? `➕ Nueva Sesión en ${temas[tIdx].title}` : `✏️ Editar Sesión del Banco (${level})`;
     document.getElementById("bank-edit-body").innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr 160px;gap:10px;">
+      <div class="modal-form-row-2col-asym">
         <div class="form-field-group">
           <label class="form-field-label" for="bank-f-s-tema">Título / Subtema de la Sesión</label>
           <input type="text" id="bank-f-s-tema" class="form-input" value="${escapeHTML(s.tema || '')}" placeholder="Ej. ¿Quiénes somos?" />
@@ -3351,7 +3357,7 @@
         <label class="form-field-label" for="bank-f-s-act">Contenido y Actividades</label>
         <textarea id="bank-f-s-act" class="form-textarea" style="min-block-size:110px;">${escapeHTML(s.actividades || '')}</textarea>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+      <div class="modal-form-row-3col">
         <div class="form-field-group">
           <label class="form-field-label" for="bank-f-s-av">📢 Avisos</label>
           <textarea id="bank-f-s-av" class="form-textarea" style="min-block-size:56px;">${escapeHTML(s.avisos || '')}</textarea>
@@ -3543,7 +3549,7 @@
       body.innerHTML = `<div style="padding:24px;text-align:center;color:var(--text-muted);">📦 El Cajón de Reserva está vacío. Cualquier clase sustituida o desplazada fuera del calendario se guardará aquí automáticamente para no perder jamás información.</div>`;
     } else {
       body.innerHTML = state.reserveSessions.map((item, idx) => `
-        <div style="padding:10px 12px;border-radius:8px;border:1px solid var(--border-medium);background:var(--bg-subtle);display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+        <div style="padding:10px 12px;border-radius:8px;border:1px solid var(--border-medium);background:var(--bg-subtle);display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">
           <div style="min-inline-size:0;flex:1;">
             <div style="font-size:10.5px;color:var(--text-muted);font-weight:700;">
               ${escapeHTML(item.savedAt)} · ${escapeHTML(formatCourseShort(item.course))} (${item.school === 'ribarroja' ? 'Riba-roja' : 'Manises'}) · ${escapeHTML(item.weekLabel)}
