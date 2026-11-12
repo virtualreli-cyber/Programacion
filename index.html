@@ -40,41 +40,38 @@
         </nav>
       </div>
 
-      <!-- Centro: Pestañas de Vista (Ranura Fija Bloqueada) + Navegador de Semana Compartido -->
+      <!-- Centro: Pestañas de Vista y Selector Compartido de Semana -->
       <div class="topbar-center">
-        <!-- Ranura fija para pestañas de vista (mantiene la misma posición independientemente del módulo) -->
-        <div class="view-tabs-fixed-slot">
-          <!-- Pestañas cuando PLANNER está activo -->
-          <div id="tabs-planner" class="view-tabs-group" role="tablist" aria-label="Vistas del Planner">
-            <button type="button" id="tab-planner-semanal" class="view-tab-btn active" onclick="App.switchPlannerView('semanal')" title="Horario semanal alineado por franjas">
-              <span>📅</span>
-              <span>Semanal</span>
-            </button>
-            <button type="button" id="tab-planner-replicar" class="view-tab-btn" onclick="App.switchPlannerView('replicar')" title="Cuadrícula global de todos los grupos y réplica rápida">
-              <span>👯</span>
-              <span>Replicar Clases</span>
-            </button>
-            <button type="button" id="tab-planner-banco" class="view-tab-btn" onclick="App.switchPlannerView('banco')" title="Banco de sesiones por curso y tema">
-              <span>📚</span>
-              <span>Banco de Sesiones</span>
-            </button>
-            <button type="button" id="tab-planner-calendario" class="view-tab-btn" onclick="App.switchPlannerView('calendario')" title="Calendario escolar mensual (Lectivo/No lectivo y Eventos)">
-              <span>🗓️</span>
-              <span>Calendario</span>
-            </button>
-          </div>
+        <!-- Pestañas cuando PLANNER está activo -->
+        <div id="tabs-planner" class="view-tabs-group" role="tablist" aria-label="Vistas del Planner">
+          <button type="button" id="tab-planner-semanal" class="view-tab-btn active" onclick="App.switchPlannerView('semanal')" title="Horario semanal alineado por franjas">
+            <span>📅</span>
+            <span>Semanal</span>
+          </button>
+          <button type="button" id="tab-planner-replicar" class="view-tab-btn" onclick="App.switchPlannerView('replicar')" title="Cuadrícula global de todos los grupos y réplica rápida">
+            <span>👯</span>
+            <span>Replicar Clases</span>
+          </button>
+          <button type="button" id="tab-planner-banco" class="view-tab-btn" onclick="App.switchPlannerView('banco')" title="Banco de sesiones por curso y tema">
+            <span>📚</span>
+            <span>Banco de Sesiones</span>
+          </button>
+          <button type="button" id="tab-planner-calendario" class="view-tab-btn" onclick="App.switchPlannerView('calendario')" title="Calendario escolar mensual (Lectivo/No lectivo y Eventos)">
+            <span>🗓️</span>
+            <span>Calendario</span>
+          </button>
+        </div>
 
-          <!-- Pestañas cuando TAREAS está activo -->
-          <div id="tabs-tareas" class="view-tabs-group" style="display: none;" role="tablist" aria-label="Vistas de Tareas">
-            <button type="button" id="tab-tareas-semanal" class="view-tab-btn active" onclick="App.switchTareasView('semanal')" title="Preparación semanal por grupo (Material, NEAE, Imprimir, Educamos)">
-              <span>📋</span>
-              <span>Control Semanal</span>
-            </button>
-            <button type="button" id="tab-tareas-largo" class="view-tab-btn" onclick="App.switchTareasView('largo')" title="Tareas a largo plazo y configuración de perfiles NEAE">
-              <span>🎯</span>
-              <span>Largo Plazo y NEAE</span>
-            </button>
-          </div>
+        <!-- Pestañas cuando TAREAS está activo -->
+        <div id="tabs-tareas" class="view-tabs-group" style="display: none;" role="tablist" aria-label="Vistas de Tareas">
+          <button type="button" id="tab-tareas-semanal" class="view-tab-btn active" onclick="App.switchTareasView('semanal')" title="Preparación semanal por grupo (Material, NEAE, Imprimir, Educamos)">
+            <span>📋</span>
+            <span>Control Semanal</span>
+          </button>
+          <button type="button" id="tab-tareas-largo" class="view-tab-btn" onclick="App.switchTareasView('largo')" title="Tareas a largo plazo y configuración de perfiles NEAE">
+            <span>🎯</span>
+            <span>Largo Plazo y NEAE</span>
+          </button>
         </div>
 
         <!-- Selector compartido de Semana -->

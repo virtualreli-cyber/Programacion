@@ -2061,6 +2061,10 @@
       const wIdx = findWeekIndexByDate(dateStr);
       const { school, groups } = getDayGroupsFromSchedule(dateStr);
 
+      const daySchool = (dow === 1 || dow === 3) ? "ribarroja" :
+                        (dow === 2 || dow === 4) ? "manises" :
+                        (dow === 5) ? "planificacion" : "";
+
       const isNoLectivo = !!(state.holidays && state.holidays[dateStr]) ||
         (state.calendarEvents[dateStr] && (state.calendarEvents[dateStr].type === "no_lectivo" || state.calendarEvents[dateStr].type === "festivo" || state.calendarEvents[dateStr].classesHeld === false));
       const calEv = state.calendarEvents[dateStr];
@@ -2069,6 +2073,7 @@
 
       const card = document.createElement("div");
       card.className = "cal-day-card" +
+        (daySchool && !isWeekend ? ` school-${daySchool}` : "") +
         (isWeekend ? " weekend" : "") +
         (isNoLectivo && !isWeekend ? " is-no-lectivo" : "") +
         (hasSpecialEvent && !isNoLectivo ? " has-special-event" : "");
@@ -2705,14 +2710,14 @@
     const ltState = state.tareas.longTermState || {};
 
     const table = document.createElement("table");
-    table.className = "corporate-tasks-table";
+    table.className = "corporate-tasks-table tareas-long-term-table";
 
-    let ths = `<tr><th>CURSO / GRUPO</th><th>🧩 PERFIL NEAE (Todo el curso)</th>`;
+    let ths = `<tr><th class="col-lt-group">CURSO / GRUPO</th><th class="col-lt-neae">🧩 PERFIL NEAE (Todo el curso)</th>`;
     tasks.forEach((t, idx) => {
       ths += `
-        <th>
-          <div style="display:flex;align-items:center;justify-content:center;gap:6px;">
-            <span>📌 ${escapeHTML(t.name)} <small style="opacity:0.75;">(${escapeHTML(t.scope || 'all')})</small></span>
+        <th class="col-lt-task">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+            <span style="font-size:11px;font-weight:800;white-space:normal;line-height:1.25;text-align:left;">📌 ${escapeHTML(t.name)} <small style="opacity:0.75;font-weight:600;">(${escapeHTML(t.scope || 'all')})</small></span>
             <button type="button" class="matrix-mini-btn" style="color:var(--danger);background:#ffffff;border:1px solid var(--danger-border);" onclick="App.deleteLongTermTask(${idx})" title="Eliminar tarea a largo plazo">🗑️</button>
           </div>
         </th>
@@ -2725,22 +2730,22 @@
       const neaeTxt = (state.tareas.neaeProfiles && state.tareas.neaeProfiles[grp.id]) || "";
       rowsHtml += `
         <tr>
-          <th class="group-row-th">
+          <th class="group-row-th col-lt-group">
             <span class="header-school-badge ${grp.school}" style="margin-right:6px;">${grp.center}</span>
             <strong>${escapeHTML(grp.shortName)}</strong>
           </th>
-          <td>
+          <td class="col-lt-neae">
             <div style="display:flex;align-items:center;gap:6px;">
               <input type="text" class="notes-inline-input" placeholder="Sin alumnado NEAE registrado..." value="${escapeHTML(neaeTxt.replace(/\n/g, ' | '))}" onchange="App.updateNeaeProfile('${grp.id}',this.value)" />
             </div>
           </td>
           ${tasks.map(t => {
             const applies = (t.scope === "all") || (t.scope === grp.center) || (t.scope === grp.level);
-            if (!applies) return `<td style="text-align:center;color:var(--text-muted);">—</td>`;
+            if (!applies) return `<td class="col-lt-task" style="text-align:center;color:var(--text-muted);">—</td>`;
             const k = `${t.id}_${grp.id}`;
             const done = !!ltState[k];
             return `
-              <td style="text-align:center;">
+              <td class="col-lt-task" style="text-align:center;">
                 <button type="button" class="task-check-btn ${done ? 'done' : ''}" onclick="App.toggleLongTermCheck('${t.id}','${grp.id}')">
                   ${done ? "✓ Completado" : "Pendiente"}
                 </button>
