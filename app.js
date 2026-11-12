@@ -553,34 +553,122 @@
     }
   }
 
+  // ==========================================================================
+  // GESTOR DE PERSISTENCIA Y ESTABILIDAD DE SCROLL (CERO SALTOS DE PANTALLA)
+  // ==========================================================================
+
+  const ViewScrollMemory = {
+    positions: {},
+
+    getViewKey() {
+      if (state.activeModule === "planner") {
+        return `planner_${state.plannerView}`;
+      }
+      return `tareas_${state.tareasView}`;
+    },
+
+    captureFromElement(targetEl) {
+      if (!targetEl) return;
+      const key = this.getViewKey();
+      if (!this.positions[key]) this.positions[key] = {};
+      this.positions[key].top = targetEl.scrollTop;
+      this.positions[key].left = targetEl.scrollLeft;
+    },
+
+    capture(customKey) {
+      const key = customKey || this.getViewKey();
+      const ws = document.getElementById("main-workspace");
+      if (!ws) return;
+      const scrollEl = ws.querySelector(".week-view-wrapper, .matrix-table-scroll, .bank-view-container, .calendar-view-container, .tareas-table-scroll") || ws;
+
+      this.positions[key] = {
+        top: scrollEl ? scrollEl.scrollTop : 0,
+        left: scrollEl ? scrollEl.scrollLeft : 0,
+        wsTop: ws.scrollTop,
+        wsLeft: ws.scrollLeft,
+        winX: window.scrollX || 0,
+        winY: window.scrollY || 0
+      };
+    },
+
+    restore(customKey) {
+      const key = customKey || this.getViewKey();
+      const saved = this.positions[key];
+      if (!saved) return;
+
+      const apply = () => {
+        const ws = document.getElementById("main-workspace");
+        if (!ws) return;
+        const scrollEl = ws.querySelector(".week-view-wrapper, .matrix-table-scroll, .bank-view-container, .calendar-view-container, .tareas-table-scroll") || ws;
+        if (scrollEl) {
+          scrollEl.scrollTop = saved.top;
+          scrollEl.scrollLeft = saved.left;
+        }
+        if (ws) {
+          ws.scrollTop = saved.wsTop;
+          ws.scrollLeft = saved.wsLeft;
+        }
+        if (saved.winX || saved.winY) {
+          window.scrollTo(saved.winX, saved.winY);
+        }
+      };
+
+      apply();
+      requestAnimationFrame(() => {
+        apply();
+        setTimeout(apply, 30);
+        setTimeout(apply, 90);
+      });
+    }
+  };
+
+  // Escuchar cualquier evento de scroll en toda la web para registrar en vivo la posición exacta
+  window.addEventListener("scroll", (e) => {
+    if (e.target && e.target.classList && (
+      e.target.classList.contains("week-view-wrapper") ||
+      e.target.classList.contains("matrix-table-scroll") ||
+      e.target.classList.contains("bank-view-container") ||
+      e.target.classList.contains("calendar-view-container") ||
+      e.target.classList.contains("tareas-table-scroll")
+    )) {
+      ViewScrollMemory.captureFromElement(e.target);
+    }
+  }, true);
+
   function switchModule(mod) {
+    if (state.activeModule === mod) return;
+    ViewScrollMemory.capture();
     state.activeModule = mod;
     document.getElementById("btn-mod-planner").classList.toggle("active", mod === "planner");
     document.getElementById("btn-mod-tareas").classList.toggle("active", mod === "tareas");
     document.getElementById("tabs-planner").style.display = (mod === "planner") ? "inline-flex" : "none";
     document.getElementById("tabs-tareas").style.display = (mod === "tareas") ? "inline-flex" : "none";
     updateTopbarBadges();
-    renderWorkspace();
+    renderWorkspace({ skipCapture: true });
   }
 
   function switchPlannerView(view) {
+    if (state.plannerView === view) return;
+    ViewScrollMemory.capture();
     state.plannerView = view;
     ["semanal", "replicar", "banco", "calendario"].forEach(v => {
       const btn = document.getElementById(`tab-planner-${v}`);
       if (btn) btn.classList.toggle("active", v === view);
     });
     updateTopbarBadges();
-    renderWorkspace();
+    renderWorkspace({ skipCapture: true });
   }
 
   function switchTareasView(view) {
+    if (state.tareasView === view) return;
+    ViewScrollMemory.capture();
     state.tareasView = view;
     ["semanal", "largo"].forEach(v => {
       const btn = document.getElementById(`tab-tareas-${v}`);
       if (btn) btn.classList.toggle("active", v === view);
     });
     updateTopbarBadges();
-    renderWorkspace();
+    renderWorkspace({ skipCapture: true });
   }
 
   function selectWeek(idx) {
@@ -696,9 +784,15 @@
   function syncWeekFranjaHeights() {
     const wrap = document.querySelector(".week-view-wrapper");
     if (!wrap) return;
-    const prevScroll = wrap.scrollTop;
+    const key = ViewScrollMemory.getViewKey();
+    const saved = ViewScrollMemory.positions[key];
+    const prevScrollY = (saved && saved.top !== undefined) ? saved.top : wrap.scrollTop;
+    const prevScrollX = (saved && saved.left !== undefined) ? saved.left : wrap.scrollLeft;
 
-    wrap.querySelectorAll(".inline-content").forEach(el => autoResizeTextarea(el, 68));
+    wrap.querySelectorAll(".inline-content").forEach(el => {
+      const minH = el.classList.contains("static-slot-textarea") ? 26 : 68;
+      autoResizeTextarea(el, minH);
+    });
     wrap.querySelectorAll(".meta-textarea").forEach(el => autoResizeTextarea(el, 18));
 
     const days = getDatesForWeek(state.currentWeekIndex);
@@ -722,6 +816,13 @@
         const sH = suspBanner ? 24 : 0;
         const needed = 28 + 26 + sH + cH + mH + 18;
         if (needed > franjaHeights[fIdx]) franjaHeights[fIdx] = needed;
+      } else if (el.classList.contains("static-slot-block")) {
+        const contentEl = el.querySelector(".static-slot-textarea");
+        if (contentEl) {
+          const sH = Math.max(26, contentEl.scrollHeight);
+          const needed = 20 + sH + 12;
+          if (needed > franjaHeights[fIdx]) franjaHeights[fIdx] = needed;
+        }
       }
     });
 
@@ -787,7 +888,8 @@
       timeLabels[numFranjas].textContent = isIntensiva ? "14:20" : "16:50";
     }
 
-    if (prevScroll > 0) wrap.scrollTop = prevScroll;
+    wrap.scrollTop = prevScrollY;
+    wrap.scrollLeft = prevScrollX;
   }
 
   function renderPlannerWeeklyView(container) {
@@ -863,7 +965,7 @@
     days.forEach(day => {
       const dayCol = document.createElement("div");
       const isNoLectivo = !!(state.holidays && state.holidays[day.dateStr]);
-      dayCol.className = "day-body-column" + (isNoLectivo ? " is-festivo" : "");
+      dayCol.className = `day-body-column ${day.school}` + (isNoLectivo ? " is-festivo" : "");
 
       let slots = [];
       if (day.school === "ribarroja" || day.school === "manises") {
@@ -1063,7 +1165,7 @@
           // Bloque estático (Patio, Comedor, Guardia, Lectura, Tiempo libre)
           const sInfo = getSlotIcon(slot.label);
           const staticCard = document.createElement("div");
-          staticCard.className = `static-slot-block ${sInfo.cls}`;
+          staticCard.className = `static-slot-block ${day.school} ${sInfo.cls}`;
           staticCard.dataset.franja = fInfo.franja;
           if (fInfo.sub) staticCard.dataset.sub = fInfo.sub;
           if (fInfo.span) staticCard.dataset.span = fInfo.span;
@@ -1072,15 +1174,26 @@
           const slotKey = `${day.dayIndex}__${slot.time}`;
           const noteVal = (week.slot_notes && week.slot_notes[slotKey]) || "";
 
-          staticCard.innerHTML = `
-            <div class="static-slot-header">
-              <span class="slot-label">${sInfo.icon} ${escapeHTML(slot.label)}</span>
-              <span class="slot-time">${slot.time}</span>
-            </div>
-            ${(slot.type === "activity" || noteVal) ? `
-              <input type="text" class="inline-field" style="font-size:10.5px;margin-top:3px;padding:2px 4px;background:rgba(255,255,255,0.6);" placeholder="Nota o recordatorio..." value="${escapeHTML(noteVal)}" oninput="App.onSlotNoteEdit(${weekIdx},'${slotKey}',this.value)" />
-            ` : ""}
+          const headerDiv = document.createElement("div");
+          headerDiv.className = "static-slot-header";
+          headerDiv.innerHTML = `
+            <span class="slot-label">${sInfo.icon} ${escapeHTML(slot.label)}</span>
+            <span class="slot-time">${slot.time}</span>
           `;
+          staticCard.appendChild(headerDiv);
+
+          const noteArea = document.createElement("textarea");
+          noteArea.className = "inline-field inline-content static-slot-textarea";
+          noteArea.placeholder = "Anotaciones, guardia, tareas...";
+          noteArea.value = noteVal;
+          noteArea.rows = 1;
+          noteArea.oninput = (e) => {
+            App.onSlotNoteEdit(weekIdx, slotKey, e.target.value);
+            autoResizeTextarea(e.target, 26);
+            syncWeekFranjaHeights();
+          };
+          staticCard.appendChild(noteArea);
+
           dayCol.appendChild(staticCard);
         }
       });
@@ -3643,12 +3756,17 @@
   }
 
   // ==========================================================================
-  // RENDERIZADOR PRINCIPAL DEL ESPACIO DE TRABAJO
+  // RENDERIZADOR PRINCIPAL DEL ESPACIO DE TRABAJO (PERSISTENCIA TOTAL DE SCROLL)
   // ==========================================================================
 
-  function renderWorkspace() {
+  function renderWorkspace(options = {}) {
     const ws = document.getElementById("main-workspace");
     if (!ws) return;
+
+    if (!options.skipCapture) {
+      ViewScrollMemory.capture();
+    }
+
     ws.innerHTML = "";
 
     if (state.activeModule === "planner") {
@@ -3668,6 +3786,8 @@
         renderTareasLongTermView(ws);
       }
     }
+
+    ViewScrollMemory.restore();
   }
 
   // ==========================================================================
