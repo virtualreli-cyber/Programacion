@@ -1182,17 +1182,20 @@
           `;
           staticCard.appendChild(headerDiv);
 
-          const noteArea = document.createElement("textarea");
-          noteArea.className = "inline-field inline-content static-slot-textarea";
-          noteArea.placeholder = "Anotaciones, guardia, tareas...";
-          noteArea.value = noteVal;
-          noteArea.rows = 1;
-          noteArea.oninput = (e) => {
-            App.onSlotNoteEdit(weekIdx, slotKey, e.target.value);
-            autoResizeTextarea(e.target, 26);
-            syncWeekFranjaHeights();
-          };
-          staticCard.appendChild(noteArea);
+          const isLectura = sInfo.cls === "lectura" || fInfo.sub === "lectura" || (slot.label && slot.label.toUpperCase().includes("LECTURA"));
+          if (!isLectura) {
+            const noteArea = document.createElement("textarea");
+            noteArea.className = "inline-field inline-content static-slot-textarea";
+            noteArea.placeholder = "Anotaciones, guardia, tareas...";
+            noteArea.value = noteVal;
+            noteArea.rows = 1;
+            noteArea.oninput = (e) => {
+              App.onSlotNoteEdit(weekIdx, slotKey, e.target.value);
+              autoResizeTextarea(e.target, 26);
+              syncWeekFranjaHeights();
+            };
+            staticCard.appendChild(noteArea);
+          }
 
           dayCol.appendChild(staticCard);
         }
@@ -1669,14 +1672,14 @@
         <th class="${isCur ? 'is-current-week-col' : ''}">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
             <div>
-              <div style="font-size:11.5px;font-weight:800;">${escapeHTML(week.num_sem)}</div>
-              <div style="font-size:10px;color:#cbd5e1;font-weight:500;">${escapeHTML(week.rango)}</div>
+              <div style="font-size:11.5px;font-weight:800;color:var(--text-main);">${escapeHTML(week.num_sem)}</div>
+              <div style="font-size:10px;color:var(--text-secondary);font-weight:600;">${escapeHTML(week.rango)}</div>
             </div>
             <div style="display:flex;gap:3px;">
               ${state.clipboard ? `
                 <button type="button" class="matrix-mini-btn btn-paste-here" style="font-size:9.5px;padding:2px 5px;" onclick="App.pasteToLevelInWeek(${idx})" title="Pegar clase copiada en todos los grupos visibles de ${state.clipboard.sourceLevel} en ${week.num_sem}">⚡ Nivel</button>
               ` : ""}
-              <button type="button" class="matrix-mini-btn" style="color:#fff;background:rgba(255,255,255,0.12);" onclick="App.selectWeek(${idx});App.switchPlannerView('semanal');" title="Abrir ${week.num_sem} en vista Semanal">📅</button>
+              <button type="button" class="matrix-mini-btn" style="color:var(--text-main);background:#ffffff;border:1px solid var(--border-medium);" onclick="App.selectWeek(${idx});App.switchPlannerView('semanal');" title="Abrir ${week.num_sem} en vista Semanal">📅</button>
             </div>
           </div>
         </th>
@@ -2324,20 +2327,20 @@
           <th>
             <div style="display:flex;align-items:center;justify-content:center;gap:5px;">
               <span>📚 Mat. Base</span>
-              <button type="button" class="matrix-mini-btn" style="color:#fff;background:rgba(255,255,255,0.15);" onclick="App.bulkToggleTareasColumn('mat')" title="Marcar/desmarcar Material Base en todos los visibles">✓</button>
+              <button type="button" class="matrix-mini-btn" style="color:#0f172a;background:#ffffff;border:1px solid #cbd5e1;font-weight:800;" onclick="App.bulkToggleTareasColumn('mat')" title="Marcar/desmarcar Material Base en todos los visibles">✓</button>
             </div>
           </th>
           <th>🧩 Adapt. NEAE</th>
           <th>
             <div style="display:flex;align-items:center;justify-content:center;gap:5px;">
               <span>🖨️ Imprimir (Próx. Sem.)</span>
-              <button type="button" class="matrix-mini-btn" style="color:#fff;background:rgba(255,255,255,0.15);" onclick="App.bulkToggleTareasColumn('print')" title="Marcar todas las impresiones pendientes como listas">✓</button>
+              <button type="button" class="matrix-mini-btn" style="color:#0f172a;background:#ffffff;border:1px solid #cbd5e1;font-weight:800;" onclick="App.bulkToggleTareasColumn('print')" title="Marcar todas las impresiones pendientes como listas">✓</button>
             </div>
           </th>
           <th>
             <div style="display:flex;align-items:center;justify-content:center;gap:5px;">
               <span>🏫 Avisos Educamos</span>
-              <button type="button" class="matrix-mini-btn" style="color:#fff;background:rgba(255,255,255,0.15);" onclick="App.bulkToggleTareasColumn('educamos')" title="Marcar todos los avisos de Educamos como enviados">✓</button>
+              <button type="button" class="matrix-mini-btn" style="color:#0f172a;background:#ffffff;border:1px solid #cbd5e1;font-weight:800;" onclick="App.bulkToggleTareasColumn('educamos')" title="Marcar todos los avisos de Educamos como enviados">✓</button>
             </div>
           </th>
           <th>💻 Plataformas</th>
@@ -2710,7 +2713,7 @@
         <th>
           <div style="display:flex;align-items:center;justify-content:center;gap:6px;">
             <span>📌 ${escapeHTML(t.name)} <small style="opacity:0.75;">(${escapeHTML(t.scope || 'all')})</small></span>
-            <button type="button" class="matrix-mini-btn" style="color:#fca5a5;" onclick="App.deleteLongTermTask(${idx})" title="Eliminar tarea a largo plazo">🗑️</button>
+            <button type="button" class="matrix-mini-btn" style="color:var(--danger);background:#ffffff;border:1px solid var(--danger-border);" onclick="App.deleteLongTermTask(${idx})" title="Eliminar tarea a largo plazo">🗑️</button>
           </div>
         </th>
       `;
