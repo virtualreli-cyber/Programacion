@@ -2689,7 +2689,7 @@ button {
   -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
-  padding: 10px 14px 16px 14px;
+  padding: 0 14px 16px 0;
 }
 
 .corporate-tasks-table {
@@ -2698,7 +2698,9 @@ button {
   border-spacing: 0;
   background: var(--bg-surface);
   border: 1px solid var(--border-medium);
-  border-radius: var(--radius-lg);
+  border-block-start: none;
+  border-inline-start: none;
+  border-radius: 0 0 var(--radius-lg) 0;
   box-shadow: var(--shadow-xs);
   text-align: left;
 }
@@ -3397,7 +3399,7 @@ dialog::backdrop {
 
   .tareas-table-scroll {
     -webkit-overflow-scrolling: touch;
-    padding-inline: 10px;
+    padding: 0 10px 12px 0;
   }
 
   .subview-toolbar {
