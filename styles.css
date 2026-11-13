@@ -1709,32 +1709,47 @@ button {
   box-shadow: var(--shadow-xs);
 }
 
-.replicate-matrix-table thead th {
+.replicate-matrix-table thead tr.matrix-weeks-thead-row th {
   position: sticky;
   inset-block-start: 0;
-  z-index: 25;
+  z-index: 28;
   background: #f1f5f9;
   color: #0f172a;
   padding: 8px 10px;
   font-size: 11px;
   font-weight: 800;
   text-align: left;
+  vertical-align: top;
   border-block-end: 2px solid #cbd5e1;
   border-inline-end: 1px solid #cbd5e1;
   inline-size: 250px;
   min-inline-size: 250px;
   max-inline-size: 250px;
+  block-size: var(--matrix-week-hdr-h, 58px);
+  min-block-size: var(--matrix-week-hdr-h, 58px);
   box-sizing: border-box;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.replicate-matrix-table thead th.sticky-group-col {
+.replicate-matrix-table.matrix-measure-table {
+  inline-size: auto;
+  min-inline-size: 0;
+}
+
+.replicate-matrix-table.matrix-measure-table thead tr.matrix-weeks-thead-row th {
+  position: static;
+  block-size: auto;
+  min-block-size: 0;
+}
+
+.replicate-matrix-table thead tr.matrix-weeks-thead-row th.sticky-group-col {
   position: sticky;
   inset-block-start: 0;
   inset-inline-start: 0;
-  z-index: 35;
+  z-index: 38;
   background: #e2e8f0;
   color: #0f172a;
+  vertical-align: middle;
   inline-size: 180px;
   min-inline-size: 180px;
   max-inline-size: 180px;
@@ -1743,10 +1758,48 @@ button {
   box-shadow: 2px 2px 6px -2px rgba(15, 23, 42, 0.12);
 }
 
-.replicate-matrix-table thead th.is-current-week-col {
+.replicate-matrix-table thead tr.matrix-weeks-thead-row th.is-current-week-col {
   background: #dbeafe;
   color: #1e40af;
   border-block-end: 2px solid #3b82f6;
+}
+
+.replicate-matrix-table thead tr.matrix-active-level-thead-row th.matrix-active-level-th {
+  position: sticky;
+  inset-block-start: var(--matrix-week-hdr-h, 58px);
+  z-index: 26;
+  background: #e2e8f0;
+  color: #0f172a;
+  padding: 0;
+  text-align: center;
+  border-block-end: 2px solid #cbd5e1;
+  border-inline-end: none;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+.matrix-active-level-banner {
+  position: sticky;
+  inset-inline-start: 0;
+  inline-size: var(--matrix-scroll-w, 100%);
+  max-inline-size: 100%;
+  padding: 5px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.matrix-active-level-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #0f172a;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 
 .replicate-matrix-table tbody th.sticky-group-row-hdr {
@@ -1769,19 +1822,33 @@ button {
 .replicate-matrix-table tbody tr.level-divider-row td,
 .replicate-matrix-table tbody tr.level-divider-row th {
   background: var(--bg-muted);
-  padding: 4px 10px;
+  padding: 0;
   font-size: 10.5px;
   font-weight: 800;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   border-block-end: 1px solid var(--border-medium);
+  text-align: center;
+}
+
+.level-divider-sticky-wrap {
+  position: sticky;
+  inset-inline-start: 0;
+  inline-size: var(--matrix-scroll-w, 100%);
+  max-inline-size: 100%;
+  padding: 5px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .level-divider-sticky-label {
-  position: sticky;
-  inset-inline-start: 10px;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
 }
 
 .replicate-matrix-table tbody td.matrix-td {
@@ -2415,6 +2482,64 @@ button {
 
 .cal-day-card.has-day-marks.mark-otro {
   box-shadow: inset -4px 0 0 #64748b, var(--shadow-xs);
+}
+
+.cal-day-card.is-current-week {
+  position: relative;
+  outline: 2px solid rgba(37, 99, 235, 0.52);
+  outline-offset: -1px;
+  background-image: linear-gradient(180deg, rgba(219, 234, 254, 0.36) 0%, rgba(239, 246, 255, 0.14) 100%);
+}
+
+.cal-day-card.is-current-week .cal-week-tag {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #93c5fd;
+  font-weight: 800;
+}
+
+.cal-day-card.is-today {
+  position: relative;
+  z-index: 3;
+  outline: 3px solid #2563eb;
+  outline-offset: -2px;
+  background-image: linear-gradient(180deg, rgba(191, 219, 254, 0.56) 0%, rgba(239, 246, 255, 0.34) 100%);
+}
+
+.cal-day-card.is-today:not(.has-day-marks) {
+  box-shadow: 0 6px 14px -3px rgba(37, 99, 235, 0.28);
+}
+
+.cal-day-num-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cal-day-card.is-today .cal-day-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 22px;
+  block-size: 22px;
+  padding-inline: 5px;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 12px;
+}
+
+.cal-today-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #1d4ed8;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
 }
 
 .cal-friday-mark-btn {
@@ -3340,7 +3465,7 @@ dialog::backdrop {
   }
 
   /* Reducir ancho de columna fija izquierda en tablas para dejar espacio de lectura en móvil */
-  .replicate-matrix-table thead th.sticky-group-col,
+  .replicate-matrix-table thead tr.matrix-weeks-thead-row th.sticky-group-col,
   .replicate-matrix-table tbody th.sticky-group-row-hdr {
     inline-size: 130px;
     min-inline-size: 130px;

@@ -1608,9 +1608,10 @@
     const model = computeWeekFranjaModel(days);
     const franjaDefs = model.franjaDefs;
     const numFranjas = franjaDefs.length;
-    const scale = 4.2;
 
-    const franjaHeights = franjaDefs.map(f => Math.max(Math.round(Math.min(f.duration, 105) * scale), 48));
+    // Altura base uniforme para todas las franjas de la semana; solo crece si alguna contiene más texto del que cabe
+    const UNIFORM_FRANJA_BASE_HEIGHT = 240;
+    const franjaHeights = franjaDefs.map(() => UNIFORM_FRANJA_BASE_HEIGHT);
     const allSlots = Array.from(wrap.querySelectorAll(".session-card, .static-slot-block"));
 
     // Calcular necesidad vertical de cada tarjeta individual (si hay sub-bloques en el mismo día, acumular su altura mínima)
@@ -2662,15 +2663,11 @@
     // 2. Cuadrícula de Grupos x Semanas
     const tableScroll = document.createElement("div");
     tableScroll.className = "matrix-table-scroll";
+    tableScroll.setAttribute("tabindex", "0");
+    tableScroll.setAttribute("role", "region");
+    tableScroll.setAttribute("aria-label", "Tabla de replicar clases");
 
-    const visibleWeeks = getFilteredWeeksForMatrix();
-    const table = document.createElement("table");
-    table.className = "replicate-matrix-table";
-
-    // Cabecera de columnas (Semanas)
-    const thead = document.createElement("thead");
-    let thHtml = `<tr><th class="sticky-group-col">GRUPO / CENTRO</th>`;
-    visibleWeeks.forEach(({ week, idx }) => {
+    const buildMatrixWeekThHtml = (week, idx, includeClipboardSlot) => {
       const isCur = (idx === state.currentWeekIndex);
       const weekMarks = getWeekMarksSummary(idx);
       const weekMarksHtml = weekMarks.length > 0 ? `
@@ -2681,7 +2678,7 @@
           }).join("")}
         </div>
       ` : "";
-      thHtml += `
+      return `
         <th class="${isCur ? 'is-current-week-col' : ''}">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
             <div>
@@ -2689,38 +2686,80 @@
               <div style="font-size:10px;color:var(--text-secondary);font-weight:600;">${escapeHTML(week.rango)}</div>
             </div>
             <div style="display:flex;gap:3px;">
-              ${state.clipboard ? `
-                <button type="button" class="matrix-mini-btn btn-paste-here" style="font-size:9.5px;padding:2px 5px;" onclick="App.pasteToLevelInWeek(${idx})" title="Pegar clase copiada en todos los grupos visibles de ${state.clipboard.sourceLevel} en ${week.num_sem}">⚡ Nivel</button>
+              ${includeClipboardSlot ? `
+                <button type="button" class="matrix-mini-btn btn-paste-here" style="font-size:9.5px;padding:2px 5px;" onclick="App.pasteToLevelInWeek(${idx})" title="Pegar clase copiada en todos los grupos visibles de ${state.clipboard ? escapeHTML(state.clipboard.sourceLevel) : ''} en ${escapeHTML(week.num_sem)}">⚡ Nivel</button>
               ` : ""}
-              <button type="button" class="matrix-mini-btn" style="color:var(--text-main);background:#ffffff;border:1px solid var(--border-medium);" onclick="App.selectWeek(${idx});App.switchPlannerView('semanal');" title="Abrir ${week.num_sem} en vista Semanal">📅</button>
+              <button type="button" class="matrix-mini-btn" style="color:var(--text-main);background:#ffffff;border:1px solid var(--border-medium);" onclick="App.selectWeek(${idx});App.switchPlannerView('semanal');" title="Abrir ${escapeHTML(week.num_sem)} en vista Semanal">📅</button>
             </div>
           </div>
           ${weekMarksHtml}
         </th>
       `;
+    };
+
+    const visibleWeeks = getFilteredWeeksForMatrix();
+    const visibleLevelSections = [];
+    COURSE_LEVELS.forEach(lvl => {
+      if (state.matrixLevelFilter !== "all" && state.matrixLevelFilter !== lvl) return;
+      const groupsOfLevel = ALL_GROUPS.filter(g => {
+        if (g.level !== lvl) return false;
+        if (state.matrixSchoolFilter !== "ambos" && g.school !== state.matrixSchoolFilter) return false;
+        return true;
+      });
+      if (groupsOfLevel.length > 0) {
+        visibleLevelSections.push({ lvl, groups: groupsOfLevel });
+      }
+    });
+
+    const firstSection = visibleLevelSections[0] || null;
+    const initialLevelLabel = firstSection
+      ? `🎓 NIVEL ${firstSection.lvl} (${firstSection.groups.length} ${firstSection.groups.length === 1 ? "grupo" : "grupos"})`
+      : "🎓 SIN GRUPOS VISIBLES";
+
+    const table = document.createElement("table");
+    table.className = "replicate-matrix-table";
+
+    // Cabecera de columnas (Semanas) + Barra fija de Nivel activo centrada
+    const thead = document.createElement("thead");
+    let thHtml = `<tr class="matrix-weeks-thead-row"><th class="sticky-group-col">GRUPO / CENTRO</th>`;
+    visibleWeeks.forEach(({ week, idx }) => {
+      thHtml += buildMatrixWeekThHtml(week, idx, !!state.clipboard);
     });
     thHtml += `</tr>`;
+    thHtml += `
+      <tr class="matrix-active-level-thead-row">
+        <th colspan="${visibleWeeks.length + 1}" class="matrix-active-level-th">
+          <div class="matrix-active-level-banner">
+            <span class="matrix-active-level-pill" id="matrix-sticky-level-label">${escapeHTML(initialLevelLabel)}</span>
+          </div>
+        </th>
+      </tr>
+    `;
     thead.innerHTML = thHtml;
     table.appendChild(thead);
 
     // Filas agrupadas por Nivel Escolar para máxima claridad al replicar
     const tbody = document.createElement("tbody");
 
-    COURSE_LEVELS.forEach(lvl => {
-      if (state.matrixLevelFilter !== "all" && state.matrixLevelFilter !== lvl) return;
+    visibleLevelSections.forEach(({ lvl, groups: groupsOfLevel }, secIdx) => {
+      const countLabel = `${groupsOfLevel.length} ${groupsOfLevel.length === 1 ? "grupo" : "grupos"}`;
+      const bannerText = `🎓 NIVEL ${lvl} (${countLabel})`;
 
-      const groupsOfLevel = ALL_GROUPS.filter(g => {
-        if (g.level !== lvl) return false;
-        if (state.matrixSchoolFilter !== "ambos" && g.school !== state.matrixSchoolFilter) return false;
-        return true;
-      });
-      if (groupsOfLevel.length === 0) return;
-
-      // Fila separadora de Nivel
-      const divTr = document.createElement("tr");
-      divTr.className = "level-divider-row";
-      divTr.innerHTML = `<th colspan="${visibleWeeks.length + 1}"><span class="level-divider-sticky-label">🎓 NIVEL ${escapeHTML(lvl)} (${groupsOfLevel.length} grupos)</span></th>`;
-      tbody.appendChild(divTr);
+      // Fila separadora entre niveles (el primer nivel ya se muestra fijo arriba en thead;
+      // los siguientes muestran su separador centrado y relevan al anterior al alcanzar la cabecera)
+      if (secIdx > 0) {
+        const divTr = document.createElement("tr");
+        divTr.className = "level-divider-row";
+        divTr.dataset.levelLabel = bannerText;
+        divTr.innerHTML = `
+          <th colspan="${visibleWeeks.length + 1}">
+            <div class="level-divider-sticky-wrap">
+              <span class="level-divider-sticky-label">${escapeHTML(bannerText)}</span>
+            </div>
+          </th>
+        `;
+        tbody.appendChild(divTr);
+      }
 
       groupsOfLevel.forEach(grp => {
         const tr = document.createElement("tr");
@@ -2838,6 +2877,92 @@
     tableScroll.appendChild(table);
     wrap.appendChild(tableScroll);
     container.appendChild(wrap);
+
+    // 3. Medir altura máxima de cabecera de semanas en TODO el curso (para que no cambie al filtrar)
+    const measureCandidates = [];
+    if (state.weeks.length > 0) {
+      measureCandidates.push({ week: state.weeks[0], idx: 0 });
+    }
+    state.weeks.forEach((wk, i) => {
+      if (i !== 0 && getWeekMarksSummary(i).length > 0) {
+        measureCandidates.push({ week: wk, idx: i });
+      }
+    });
+    if (measureCandidates.length > 0 && typeof document.createElement === "function") {
+      const measureTbl = document.createElement("table");
+      measureTbl.className = "replicate-matrix-table matrix-measure-table";
+      measureTbl.setAttribute("aria-hidden", "true");
+      measureTbl.style.cssText = "position:absolute;visibility:hidden;pointer-events:none;top:-9999px;left:-9999px;z-index:-1;";
+      measureTbl.innerHTML = `<thead><tr class="matrix-weeks-thead-row">${measureCandidates.map(c => buildMatrixWeekThHtml(c.week, c.idx, true)).join("")}</tr></thead>`;
+      wrap.appendChild(measureTbl);
+      let maxHdrH = 58;
+      measureTbl.querySelectorAll("th").forEach(th => {
+        const h = th.getBoundingClientRect ? th.getBoundingClientRect().height : 0;
+        if (h > maxHdrH) maxHdrH = h;
+      });
+      measureTbl.remove();
+      tableScroll.style.setProperty("--matrix-week-hdr-h", Math.ceil(maxHdrH) + "px");
+    }
+
+    // 4. Sincronizar ancho visible para centrar la barra de nivel + actualizar nivel activo al hacer scroll vertical
+    const syncMatrixViewportWidth = () => {
+      const cw = tableScroll.clientWidth || 0;
+      if (cw > 0) {
+        tableScroll.style.setProperty("--matrix-scroll-w", Math.max(240, cw - 14) + "px");
+      }
+    };
+
+    const updateStickyLevelBanner = () => {
+      const lblEl = table.querySelector("#matrix-sticky-level-label");
+      const activeBarTh = thead.querySelector(".matrix-active-level-th");
+      if (!lblEl || !activeBarTh || !activeBarTh.getBoundingClientRect) return;
+      let activeText = initialLevelLabel;
+      const barBottom = activeBarTh.getBoundingClientRect().bottom;
+      const dividers = tbody.querySelectorAll("tr.level-divider-row");
+      for (let i = 0; i < dividers.length; i++) {
+        const rect = dividers[i].getBoundingClientRect ? dividers[i].getBoundingClientRect() : null;
+        if (!rect) break;
+        if (rect.top <= barBottom + 2) {
+          activeText = dividers[i].dataset.levelLabel || activeText;
+        } else {
+          break;
+        }
+      }
+      if (lblEl.textContent !== activeText) {
+        lblEl.textContent = activeText;
+      }
+    };
+
+    syncMatrixViewportWidth();
+    updateStickyLevelBanner();
+
+    let matrixRafPending = false;
+    tableScroll.addEventListener("scroll", () => {
+      if (matrixRafPending) return;
+      matrixRafPending = true;
+      requestAnimationFrame(() => {
+        matrixRafPending = false;
+        syncMatrixViewportWidth();
+        updateStickyLevelBanner();
+      });
+    }, { passive: true });
+
+    if (typeof ResizeObserver === "function") {
+      const ro = new ResizeObserver(() => {
+        syncMatrixViewportWidth();
+        updateStickyLevelBanner();
+      });
+      ro.observe(tableScroll);
+    }
+
+    requestAnimationFrame(() => {
+      syncMatrixViewportWidth();
+      updateStickyLevelBanner();
+      setTimeout(() => {
+        syncMatrixViewportWidth();
+        updateStickyLevelBanner();
+      }, 45);
+    });
   }
 
   function pasteToLevelInWeek(weekIdx) {
@@ -3133,6 +3258,14 @@
     const todayMonthKey = todayStr.slice(0, 7);
     const isCurrentMonth = mObj.key === todayMonthKey;
 
+    // Rango Lunes..Domingo de la semana de hoy para resaltarla dentro del mes actual
+    const todayParts = todayStr.split("-").map(Number);
+    const todayLocalDate = new Date(todayParts[0], todayParts[1] - 1, todayParts[2]);
+    const todayDowMon0 = (todayLocalDate.getDay() + 6) % 7;
+    const fmtCalYMD = (dt) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+    const curWeekStartStr = fmtCalYMD(new Date(todayParts[0], todayParts[1] - 1, todayParts[2] - todayDowMon0));
+    const curWeekEndStr = fmtCalYMD(new Date(todayParts[0], todayParts[1] - 1, todayParts[2] + (6 - todayDowMon0)));
+
     toolbar.innerHTML = `
       <div class="toolbar-cluster">
         <button type="button" class="corporate-btn" style="padding-inline:8px;" onclick="App.stepCalendarMonth(-1)" title="Mes anterior" aria-label="Mes anterior">◀</button>
@@ -3211,6 +3344,8 @@
       const suspendedList = (calEv && Array.isArray(calEv.suspendedGroups)) ? calEv.suspendedGroups : [];
 
       const card = document.createElement("div");
+      const isToday = (dateStr === todayStr);
+      const isInCurrentWeek = isCurrentMonth && (dateStr >= curWeekStartStr && dateStr <= curWeekEndStr);
       card.className = "cal-day-card" +
         (isFirstRow ? " in-first-row" : "") +
         (effectiveSchool ? ` school-themed school-${effectiveSchool}` : (!isWeekend && !outsideCourse ? " school-planificacion" : "")) +
@@ -3218,12 +3353,17 @@
         (isWeekend ? " weekend" : "") +
         (isNoLectivo && !isWeekend && !outsideCourse ? " is-no-lectivo" : "") +
         (hasSpecialEvent && !isNoLectivo && !outsideCourse ? " has-special-event" : "") +
-        (dayMarks.length > 0 && !isWeekend ? ` has-day-marks mark-${dayMarks[0].category}` : "");
+        (dayMarks.length > 0 && !isWeekend ? ` has-day-marks mark-${dayMarks[0].category}` : "") +
+        (isInCurrentWeek ? " is-current-week" : "") +
+        (isToday ? " is-today" : "");
       if (effectiveSchool) card.style.cssText = getSchoolStyleAttr(effectiveSchool);
 
       let bodyHtml = `
         <div class="cal-day-top">
-          <span class="cal-day-num">${d}</span>
+          <span class="cal-day-num-wrap">
+            <span class="cal-day-num">${d}</span>
+            ${isToday ? `<span class="cal-today-badge">HOY</span>` : ""}
+          </span>
           <div style="display:flex;align-items:center;gap:4px;">
             ${!isWeekend && (!groups || groups.length === 0) ? `<button type="button" class="cal-friday-mark-btn" onclick="App.openCalendarDayModal('${dateStr}')" title="Añadir hito de programación (Reunión, Claustro, Curso...)">📌 Hito</button>` : ""}
             ${wIdx !== -1 ? `<button type="button" class="cal-week-tag" onclick="App.selectWeek(${wIdx});App.switchPlannerView('semanal');" title="Abrir Semana ${wIdx + 1} en vista Semanal">Sem. ${wIdx + 1}</button>` : ""}
