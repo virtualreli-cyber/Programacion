@@ -3066,6 +3066,8 @@ dialog::backdrop {
   padding: 16px;
   overflow-y: auto;
   overscroll-behavior: contain;
+  flex: 1 1 auto;
+  min-block-size: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -3427,9 +3429,19 @@ dialog::backdrop {
 
 .modal-settings-surface {
   inline-size: min(980px, 96vw);
-  max-block-size: 92vh;
+  min-inline-size: min(980px, 96vw);
+  max-inline-size: min(980px, 96vw);
+  block-size: min(740px, 88dvh);
+  min-block-size: min(740px, 88dvh);
+  max-block-size: 92dvh;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
+}
+
+.modal-settings-surface > .modal-dialog-header,
+.modal-settings-surface > .modal-dialog-footer {
+  flex-shrink: 0;
 }
 
 .settings-tabs-bar {
@@ -3488,7 +3500,9 @@ dialog::backdrop {
 .settings-modal-body {
   padding: 16px 18px;
   overflow-y: auto;
-  flex: 1;
+  overscroll-behavior: contain;
+  flex: 1 1 auto;
+  min-block-size: 0;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -3723,6 +3737,15 @@ dialog::backdrop {
 }
 
 @media (max-width: 767px) {
+  .modal-settings-surface {
+    inline-size: 100% !important;
+    min-inline-size: 100% !important;
+    max-inline-size: 100% !important;
+    block-size: 90dvh;
+    min-block-size: 90dvh;
+    max-block-size: 94dvh;
+  }
+
   .settings-grid-2,
   .settings-grid-3,
   .settings-months-grid,

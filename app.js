@@ -3033,11 +3033,16 @@
       `<option value="${m.key}" ${m.key === mObj.key ? "selected" : ""}>🗓️ ${m.name}</option>`
     ).join("");
 
+    const { todayStr } = getNowCalendarInfo();
+    const todayMonthKey = todayStr.slice(0, 7);
+    const isCurrentMonth = mObj.key === todayMonthKey;
+
     toolbar.innerHTML = `
       <div class="toolbar-cluster">
-        <button type="button" class="corporate-btn" onclick="App.stepCalendarMonth(-1)">◀ Mes anterior</button>
-        <select class="corporate-select" onchange="App.setCalendarMonth(this.value)">${monthOpts}</select>
-        <button type="button" class="corporate-btn" onclick="App.stepCalendarMonth(1)">Mes siguiente ▶</button>
+        <button type="button" class="corporate-btn" style="padding-inline:8px;" onclick="App.stepCalendarMonth(-1)" title="Mes anterior" aria-label="Mes anterior">◀</button>
+        <select class="corporate-select" onchange="App.setCalendarMonth(this.value)" aria-label="Seleccionar mes">${monthOpts}</select>
+        <button type="button" class="corporate-btn" style="padding-inline:8px;" onclick="App.stepCalendarMonth(1)" title="Mes siguiente" aria-label="Mes siguiente">▶</button>
+        <button type="button" class="corporate-btn ${isCurrentMonth ? "primary" : ""}" onclick="App.goToCurrentCalendarMonth()" title="Ir al mes actual de hoy">📍 Mes actual</button>
       </div>
       <div class="toolbar-cluster" style="font-size:11.5px;color:var(--text-secondary);">
         <span>💡 Usa <strong>🟢 Lectivo / 🏖️ No lectivo</strong> para festivos, y <strong>🎪 Evento / 📌 Hito</strong> para añadir Exámenes, Evaluaciones, Recup. o Claustros.</span>
@@ -6144,7 +6149,7 @@
       const btn = document.getElementById(`settings-tab-btn-${id}`);
       if (btn) btn.setAttribute("aria-selected", id === settingsModalTab ? "true" : "false");
     });
-    renderSettingsModalBody();
+    renderSettingsModalBody(true);
   }
 
   function openSettingsModal(initialTab) {
@@ -6157,15 +6162,17 @@
     openModal("modal-course-settings");
   }
 
-  function renderSettingsModalBody() {
+  function renderSettingsModalBody(resetScroll = false) {
     const body = document.getElementById("settings-modal-body");
     const hintEl = document.getElementById("settings-footer-hint");
     if (!body) return;
+    const prevScrollTop = resetScroll ? 0 : body.scrollTop;
 
     const cfg = getCourseConfig();
     const curY = cfg.schoolYearStart;
     const months = getSchoolMonths(curY);
 
+    try {
     if (settingsModalTab === "curso") {
       if (hintEl) hintEl.textContent = `Curso ${getSchoolYearFullLabel(curY)} · ${state.weeks.length} semanas reales (Sep ${curY} – Ago ${curY + 1})`;
       body.innerHTML = `
@@ -6533,6 +6540,9 @@
         </div>
       </div>
     `;
+    } finally {
+      body.scrollTop = prevScrollTop;
+    }
   }
 
   // ==========================================================================
@@ -6628,6 +6638,25 @@
       if (next >= 0 && next < months.length) {
         state.calendarMonthKey = months[next].key;
         renderWorkspace();
+      }
+    },
+    goToCurrentCalendarMonth() {
+      const months = getSchoolMonths();
+      const { todayStr } = getNowCalendarInfo();
+      const todayMonthKey = todayStr.slice(0, 7);
+      const exact = months.find(m => m.key === todayMonthKey);
+      if (exact) {
+        state.calendarMonthKey = exact.key;
+        renderWorkspace();
+        showToast(`🗓️ Mostrando mes actual: ${exact.name}`);
+        return;
+      }
+      const curMonthNum = Number(todayStr.slice(5, 7));
+      const sameCalMonth = months.find(m => m.month === curMonthNum) || months[0];
+      if (sameCalMonth) {
+        state.calendarMonthKey = sameCalMonth.key;
+        renderWorkspace();
+        showToast(`🗓️ Curso ${getSchoolYearFullLabel()} · Mostrando ${sameCalMonth.name}`);
       }
     },
     toggleDayNoLectivo,
