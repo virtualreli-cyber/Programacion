@@ -3086,9 +3086,10 @@
 
     const firstDow = new Date(year, month - 1, 1).getDay();
     const startCol = (firstDow === 0) ? 7 : firstDow;
+    let firstRowHasSessions = false;
     for (let p = 1; p < startCol; p++) {
       const empty = document.createElement("div");
-      empty.className = "cal-day-card other-month";
+      empty.className = "cal-day-card other-month in-first-row";
       grid.appendChild(empty);
     }
 
@@ -3097,8 +3098,12 @@
       const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
       const dow = new Date(year, month - 1, d).getDay();
       const isWeekend = (dow === 0 || dow === 6);
+      const isFirstRow = ((startCol - 1) + (d - 1)) < 7;
       const wIdx = findWeekIndexByDate(dateStr);
       const { school, groups, outsideCourse } = getDayGroupsFromSchedule(dateStr);
+      if (isFirstRow && !isWeekend && !outsideCourse && school && groups.length > 0) {
+        firstRowHasSessions = true;
+      }
       const dayIdx = dow - 1;
       const cfgSchool = (!isWeekend && dayIdx >= 0 && dayIdx <= 4) ? getWeekdaySchool(dayIdx) : "";
       const effectiveSchool = (!outsideCourse && cfgSchool && cfgSchool !== "libre") ? cfgSchool : "";
@@ -3114,6 +3119,7 @@
 
       const card = document.createElement("div");
       card.className = "cal-day-card" +
+        (isFirstRow ? " in-first-row" : "") +
         (effectiveSchool ? ` school-themed school-${effectiveSchool}` : (!isWeekend && !outsideCourse ? " school-planificacion" : "")) +
         (outsideCourse && !isWeekend ? " outside-course" : "") +
         (isWeekend ? " weekend" : "") +
@@ -3195,6 +3201,10 @@
 
       card.innerHTML = bodyHtml;
       grid.appendChild(card);
+    }
+
+    if (!firstRowHasSessions) {
+      grid.classList.add("compact-first-row");
     }
 
     scroll.appendChild(grid);

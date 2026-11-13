@@ -2155,6 +2155,20 @@ button {
   gap: 8px;
 }
 
+.cal-month-grid.compact-first-row {
+  grid-template-rows: minmax(58px, auto);
+  grid-auto-rows: 136px;
+}
+
+.cal-month-grid.compact-first-row > .cal-day-card.in-first-row,
+.cal-month-grid.compact-first-row > .cal-day-card.in-first-row.other-month {
+  block-size: auto;
+  min-block-size: 58px;
+  max-block-size: none;
+  padding: 5px 8px;
+  gap: 3px;
+}
+
 .cal-weekday-hdr {
   block-size: 32px;
   min-block-size: 32px;
