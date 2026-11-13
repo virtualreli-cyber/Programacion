@@ -1,5 +1,5 @@
 // ============================================================================
-// PROGRAMACIÓN DOCENTE UNIFICADA 26·27 — LÓGICA PRINCIPAL (PLANNER + TAREAS)
+// PROGRAMACIÓN DOCENTE UNIFICADA — LÓGICA PRINCIPAL (PLANNER + TAREAS)
 // ============================================================================
 
 (function () {
@@ -12,42 +12,49 @@
   const STORAGE_KEY_TAREAS_LT_TASKS = "docente_lt_tasks_v1";
   const STORAGE_KEY_TAREAS_LT_STATE = "docente_lt_state_v1";
 
-  const ALL_GROUPS = [
-    { id: "r_1eso_a", school: "ribarroja", center: "Riba-roja", course: "1º ESO - A", shortName: "1º ESO A", level: "1º ESO" },
-    { id: "r_1eso_b", school: "ribarroja", center: "Riba-roja", course: "1º ESO - B", shortName: "1º ESO B", level: "1º ESO" },
-    { id: "r_2eso_a", school: "ribarroja", center: "Riba-roja", course: "2º ESO - A", shortName: "2º ESO A", level: "2º ESO" },
-    { id: "r_2eso_b", school: "ribarroja", center: "Riba-roja", course: "2º ESO - B", shortName: "2º ESO B", level: "2º ESO" },
-    { id: "r_3eso_a", school: "ribarroja", center: "Riba-roja", course: "3º ESO - A", shortName: "3º ESO A", level: "3º ESO" },
-    { id: "r_3eso_b", school: "ribarroja", center: "Riba-roja", course: "3º ESO - B", shortName: "3º ESO B", level: "3º ESO" },
-    { id: "r_4eso_a", school: "ribarroja", center: "Riba-roja", course: "4º ESO - A", shortName: "4º ESO A", level: "4º ESO" },
-    { id: "r_4eso_b", school: "ribarroja", center: "Riba-roja", course: "4º ESO - B", shortName: "4º ESO B", level: "4º ESO" },
-    { id: "r_1bac",   school: "ribarroja", center: "Riba-roja", course: "1º BACHILLERATO", shortName: "1º BAC", level: "1º BACHILLERATO" },
+  const SCHOOL_COLOR_THEMES = {
+    rojo:     { id: "rojo",     label: "Rojo Coral",   main: "#f87171", dark: "#991b1b", soft: "#fee2e2", border: "#fecaca", tint: "#fff5f5" },
+    azul:     { id: "azul",     label: "Azul Cielo",   main: "#38bdf8", dark: "#075985", soft: "#e0f2fe", border: "#bae6fd", tint: "#f0f9ff" },
+    verde:    { id: "verde",    label: "Verde Menta",  main: "#34d399", dark: "#065f46", soft: "#d1fae5", border: "#a7f3d0", tint: "#ecfdf5" },
+    morado:   { id: "morado",   label: "Lavanda",      main: "#a78bfa", dark: "#5b21b6", soft: "#ede9fe", border: "#ddd6fe", tint: "#f5f3ff" },
+    naranja:  { id: "naranja",  label: "Melocotón",    main: "#fb923c", dark: "#9a3412", soft: "#ffedd5", border: "#fed7aa", tint: "#fff7ed" },
+    turquesa: { id: "turquesa", label: "Turquesa",     main: "#2dd4bf", dark: "#115e59", soft: "#ccfbf1", border: "#99f6e4", tint: "#f0fdfa" },
+    rosa:     { id: "rosa",     label: "Rosa Pastel",  main: "#f472b6", dark: "#9d174d", soft: "#fce7f3", border: "#fbcfe8", tint: "#fdf2f8" }
+  };
 
-    { id: "m_1eso_a", school: "manises",   center: "Manises",   course: "1º ESO - A", shortName: "1º ESO A", level: "1º ESO" },
-    { id: "m_1eso_b", school: "manises",   center: "Manises",   course: "1º ESO - B", shortName: "1º ESO B", level: "1º ESO" },
-    { id: "m_2eso_a", school: "manises",   center: "Manises",   course: "2º ESO - A", shortName: "2º ESO A", level: "2º ESO" },
-    { id: "m_2eso_b", school: "manises",   center: "Manises",   course: "2º ESO - B", shortName: "2º ESO B", level: "2º ESO" },
-    { id: "m_3eso_a", school: "manises",   center: "Manises",   course: "3º ESO - A", shortName: "3º ESO A", level: "3º ESO" },
-    { id: "m_3eso_b", school: "manises",   center: "Manises",   course: "3º ESO - B", shortName: "3º ESO B", level: "3º ESO" },
-    { id: "m_4eso_a", school: "manises",   center: "Manises",   course: "4º ESO - A", shortName: "4º ESO A", level: "4º ESO" },
-    { id: "m_4eso_b", school: "manises",   center: "Manises",   course: "4º ESO - B", shortName: "4º ESO B", level: "4º ESO" }
+  const LEGACY_GROUP_ID_MAP = {
+    "ribarroja|1º ESO - A": "r_1eso_a",
+    "ribarroja|1º ESO - B": "r_1eso_b",
+    "ribarroja|2º ESO - A": "r_2eso_a",
+    "ribarroja|2º ESO - B": "r_2eso_b",
+    "ribarroja|3º ESO - A": "r_3eso_a",
+    "ribarroja|3º ESO - B": "r_3eso_b",
+    "ribarroja|4º ESO - A": "r_4eso_a",
+    "ribarroja|4º ESO - B": "r_4eso_b",
+    "ribarroja|1º BACHILLERATO": "r_1bac",
+    "manises|1º ESO - A": "m_1eso_a",
+    "manises|1º ESO - B": "m_1eso_b",
+    "manises|2º ESO - A": "m_2eso_a",
+    "manises|2º ESO - B": "m_2eso_b",
+    "manises|3º ESO - A": "m_3eso_a",
+    "manises|3º ESO - B": "m_3eso_b",
+    "manises|4º ESO - A": "m_4eso_a",
+    "manises|4º ESO - B": "m_4eso_b"
+  };
+
+  let ALL_GROUPS = [];
+  let COURSE_LEVELS = ["1º ESO", "2º ESO", "3º ESO", "4º ESO", "1º BACHILLERATO"];
+
+  const MONTH_NAMES_TITLE = [
+    "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
   ];
-
-  const COURSE_LEVELS = ["1º ESO", "2º ESO", "3º ESO", "4º ESO", "1º BACHILLERATO"];
-
-  const SCHOOL_MONTHS = [
-    { key: "2026-09", year: 2026, month: 9,  name: "Septiembre 2026", mesUpper: "SEPTIEMBRE" },
-    { key: "2026-10", year: 2026, month: 10, name: "Octubre 2026",    mesUpper: "OCTUBRE" },
-    { key: "2026-11", year: 2026, month: 11, name: "Noviembre 2026",  mesUpper: "NOVIEMBRE" },
-    { key: "2026-12", year: 2026, month: 12, name: "Diciembre 2026",  mesUpper: "DICIEMBRE" },
-    { key: "2027-01", year: 2027, month: 1,  name: "Enero 2027",      mesUpper: "ENERO" },
-    { key: "2027-02", year: 2027, month: 2,  name: "Febrero 2027",    mesUpper: "FEBRERO" },
-    { key: "2027-03", year: 2027, month: 3,  name: "Marzo 2027",      mesUpper: "MARZO" },
-    { key: "2027-04", year: 2027, month: 4,  name: "Abril 2027",      mesUpper: "ABRIL" },
-    { key: "2027-05", year: 2027, month: 5,  name: "Mayo 2027",       mesUpper: "MAYO" },
-    { key: "2027-06", year: 2027, month: 6,  name: "Junio 2027",      mesUpper: "JUNIO" }
+  const MONTH_NAMES_UPPER = [
+    "", "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
+    "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"
   ];
-
+  const DAY_NAMES_FULL = ["LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES"];
+  const DAY_LETTERS = ["L", "M", "X", "J", "V"];
   const DAY_NAMES_SHORT = ["LUN", "MAR", "MIÉ", "JUE", "VIE"];
   const MONTH_NAMES_SHORT = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
 
@@ -64,7 +71,7 @@
     activeModule: "planner",          // 'planner' | 'tareas'
     plannerView: "semanal",           // 'semanal' | 'replicar' | 'banco' | 'calendario'
     tareasView: "semanal",            // 'semanal' | 'largo'
-    currentWeekIndex: 9,              // 0..43 (Semana 10 por defecto o semana actual)
+    currentWeekIndex: 9,
     searchQuery: "",
 
     // Filtros vista Replicar Clases (Matriz)
@@ -80,14 +87,15 @@
     calendarMonthKey: "2026-11",
 
     // Filtros vista Tareas
-    tareasFilter: "all",              // 'all' | 'Riba-roja' | 'Manises' | 'neae' | 'pending'
+    tareasFilter: "all",              // 'all' | '<school.id>' | '<school.name>' | 'neae' | 'pending'
     tareasHideDone: false,
 
     // Portapapeles de Replicación
-    clipboard: null,                  // { tema, actividades, avisos, educamos, imprimir, sesion, sourceLabel, sourceLevel, sourceSchool, sourceCourse, sourceWeekIdx }
-    clipboardPasteMode: "ask",        // 'ask' | 'cascade_forward' | 'overwrite'
+    clipboard: null,
+    clipboardPasteMode: "ask",
 
     // Datos Persistentes Sincronizados
+    courseConfig: null,
     weeks: [],
     holidays: {},
     calendarEvents: {},
@@ -107,7 +115,7 @@
   const redoStack = [];
   const MAX_HISTORY = 35;
 
-  let activeEditTarget = null;        // { weekIdx, school, course, prepared }
+  let activeEditTarget = null;
   let activeConflictContext = null;
   let activeCalendarModalDate = null;
   let activeCalMarkCategory = "";
@@ -115,12 +123,22 @@
   let activeBankDeployContext = null;
   let activeBankEditContext = null;
   let activePostponeContext = null;
-  let pendingDeleteMatrixSession = null; // { school, course, weekIdx }
+  let pendingDeleteMatrixSession = null;
   let lastWeekFranjaLayout = null;
   let liveTimeTimer = null;
 
+  // Estado UI interno de Modal de Configuración
+  let settingsModalTab = "curso";     // 'curso' | 'colegios' | 'horarios' | 'nuevo'
+  let settingsEditingSchoolId = null;
+  let settingsHorariosSchoolId = "ribarroja";
+  let settingsHorariosMode = "ordinaria";
+  let settingsHorariosDay = 0;
+  let settingsNuevoTargetYear = 2027;
+  let settingsNuevoNeaeMode = "promote"; // 'promote' | 'keep' | 'clear'
+  let settingsNuevoDownloadBackup = true;
+
   // ==========================================================================
-  // UTILIDADES GENERALES Y FECHAS
+  // CONFIGURACIÓN DE CURSO, COLEGIOS, HORARIOS Y GRUPOS DINÁMICOS
   // ==========================================================================
 
   function deepClone(obj) {
@@ -153,9 +171,381 @@
 
   function getCourseLevel(course) {
     if (!course) return "";
+    const bac = course.match(/^(\dº)\s*BACH/i);
+    if (bac) return `${bac[1]} BACHILLERATO`;
     if (course.includes("BACH")) return "1º BACHILLERATO";
     const m = course.match(/^(\dº\s*ESO)/i);
     return m ? m[1].toUpperCase() : course;
+  }
+
+  function computeSchoolShortDays(schoolId, weekdaySchools) {
+    const letters = [];
+    (weekdaySchools || []).forEach((sId, idx) => {
+      if (sId === schoolId && DAY_LETTERS[idx]) letters.push(DAY_LETTERS[idx]);
+    });
+    return letters.length > 0 ? letters.join("/") : "Sin días";
+  }
+
+  function createDefaultCourseConfig() {
+    const tpl = (typeof window !== "undefined" && window.SCHEDULE_TEMPLATES) ? window.SCHEDULE_TEMPLATES : {};
+    return {
+      schoolYearStart: 2026,
+      classesStartDate: "2026-09-01",
+      classesEndDate: "2027-07-02",
+      intensivaMonths: [9, 6],
+      schools: [
+        { id: "ribarroja", name: "Riba-roja", icon: "🔴", colorTheme: "rojo", platform: "Teams", shortDays: "L/X" },
+        { id: "manises",   name: "Manises",   icon: "🔵", colorTheme: "azul", platform: "Classroom", shortDays: "M/J" }
+      ],
+      weekdaySchools: ["ribarroja", "manises", "ribarroja", "manises", "libre"],
+      schedules: {
+        ribarroja: tpl.ribarroja ? deepClone(tpl.ribarroja) : { ordinaria: {}, intensiva: {} },
+        manises:   tpl.manises   ? deepClone(tpl.manises)   : { ordinaria: {}, intensiva: {} }
+      }
+    };
+  }
+
+  function normalizeCourseConfig(raw) {
+    const def = createDefaultCourseConfig();
+    if (!raw || typeof raw !== "object") return def;
+    const yr = parseInt(raw.schoolYearStart, 10);
+    const schoolYearStart = (Number.isFinite(yr) && yr >= 2000 && yr <= 2150) ? yr : def.schoolYearStart;
+    const classesStartDate = (typeof raw.classesStartDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw.classesStartDate))
+      ? raw.classesStartDate
+      : `${schoolYearStart}-09-01`;
+    const classesEndDate = (typeof raw.classesEndDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw.classesEndDate))
+      ? raw.classesEndDate
+      : `${schoolYearStart + 1}-07-02`;
+    const intensivaMonths = Array.isArray(raw.intensivaMonths)
+      ? raw.intensivaMonths.map(Number).filter(n => n >= 1 && n <= 12)
+      : [9, 6];
+
+    const schools = (Array.isArray(raw.schools) && raw.schools.length > 0)
+      ? raw.schools.map(s => ({
+          id: String(s.id || "centro"),
+          name: String(s.name || s.id || "Centro"),
+          icon: String(s.icon || "🏫"),
+          colorTheme: SCHOOL_COLOR_THEMES[s.colorTheme] ? s.colorTheme : "azul",
+          platform: String(s.platform || "Aula Virtual"),
+          shortDays: String(s.shortDays || "")
+        }))
+      : def.schools;
+
+    const validIds = new Set(schools.map(s => s.id));
+    const weekdaySchools = Array.isArray(raw.weekdaySchools) && raw.weekdaySchools.length === 5
+      ? raw.weekdaySchools.map(v => (v && v !== "libre" && validIds.has(v)) ? v : "libre")
+      : def.weekdaySchools.map(v => (v && v !== "libre" && validIds.has(v)) ? v : "libre");
+
+    schools.forEach(s => {
+      s.shortDays = computeSchoolShortDays(s.id, weekdaySchools);
+    });
+
+    const schedules = {};
+    schools.forEach(s => {
+      const src = (raw.schedules && raw.schedules[s.id]) || def.schedules[s.id] || { ordinaria: {}, intensiva: {} };
+      schedules[s.id] = {
+        ordinaria: {},
+        intensiva: {}
+      };
+      for (let d = 0; d < 5; d++) {
+        const ordArr = (src.ordinaria && (src.ordinaria[d] || src.ordinaria[String(d)])) || [];
+        const intArr = (src.intensiva && (src.intensiva[d] || src.intensiva[String(d)])) || [];
+        schedules[s.id].ordinaria[d] = Array.isArray(ordArr) ? deepClone(ordArr) : [];
+        schedules[s.id].intensiva[d] = Array.isArray(intArr) ? deepClone(intArr) : [];
+      }
+    });
+
+    return {
+      schoolYearStart,
+      classesStartDate,
+      classesEndDate,
+      intensivaMonths,
+      schools,
+      weekdaySchools,
+      schedules
+    };
+  }
+
+  function getCourseConfig() {
+    if (!state.courseConfig) {
+      state.courseConfig = normalizeCourseConfig(null);
+    }
+    return state.courseConfig;
+  }
+
+  function getSchoolYearStart() {
+    return getCourseConfig().schoolYearStart || 2026;
+  }
+
+  function getSchoolYearShortLabel(yStart) {
+    const y = yStart !== undefined ? yStart : getSchoolYearStart();
+    return `${String(y).slice(-2)}·${String(y + 1).slice(-2)}`;
+  }
+
+  function getSchoolYearFullLabel(yStart) {
+    const y = yStart !== undefined ? yStart : getSchoolYearStart();
+    return `${y}-${y + 1}`;
+  }
+
+  function getSchools() {
+    return getCourseConfig().schools || [];
+  }
+
+  function getSchoolMeta(schoolId) {
+    if (!schoolId || schoolId === "libre") {
+      return {
+        id: "libre",
+        name: "Planificación",
+        icon: "🗓️",
+        colorTheme: "gris",
+        platform: "",
+        shortDays: "V",
+        palette: { main: "#94a3b8", dark: "#334155", soft: "#f1f5f9", border: "#cbd5e1", tint: "#f8fafc" }
+      };
+    }
+    const found = getSchools().find(s => s.id === schoolId);
+    if (!found) {
+      return {
+        id: schoolId,
+        name: schoolId,
+        icon: "🏫",
+        colorTheme: "azul",
+        platform: "Aula Virtual",
+        shortDays: "",
+        palette: SCHOOL_COLOR_THEMES.azul
+      };
+    }
+    return {
+      ...found,
+      palette: SCHOOL_COLOR_THEMES[found.colorTheme] || SCHOOL_COLOR_THEMES.azul
+    };
+  }
+
+  function getSchoolStyleAttr(schoolId) {
+    if (!schoolId || schoolId === "libre") return "";
+    const p = getSchoolMeta(schoolId).palette;
+    return `--sch-main:${p.main};--sch-dark:${p.dark};--sch-soft:${p.soft};--sch-border:${p.border};--sch-tint:${p.tint};`;
+  }
+
+  function getWeekdaySchool(dayIndex) {
+    const ws = getCourseConfig().weekdaySchools || [];
+    return ws[dayIndex] || "libre";
+  }
+
+  function isMonthIntensiva(monthNum) {
+    return (getCourseConfig().intensivaMonths || []).includes(monthNum);
+  }
+
+  function isOutsideClassPeriod(dateStr) {
+    if (!dateStr) return false;
+    const cfg = getCourseConfig();
+    if (cfg.classesStartDate && dateStr < cfg.classesStartDate) return true;
+    if (cfg.classesEndDate && dateStr > cfg.classesEndDate) return true;
+    return false;
+  }
+
+  function getSchoolSchedules(schoolId) {
+    const cfg = getCourseConfig();
+    if (cfg.schedules && cfg.schedules[schoolId]) return cfg.schedules[schoolId];
+    return { ordinaria: {}, intensiva: {} };
+  }
+
+  function getSchoolMonths(yStart) {
+    const y = yStart !== undefined ? yStart : getSchoolYearStart();
+    const res = [];
+    for (let i = 0; i < 12; i++) {
+      const m = ((8 + i) % 12) + 1; // 9,10,11,12,1..8
+      const yr = (m >= 9) ? y : (y + 1);
+      res.push({
+        key: `${yr}-${String(m).padStart(2, "0")}`,
+        year: yr,
+        month: m,
+        name: `${MONTH_NAMES_TITLE[m]} ${yr}`,
+        mesUpper: MONTH_NAMES_UPPER[m]
+      });
+    }
+    return res;
+  }
+
+  function slugifyKey(str) {
+    return String(str || "")
+      .toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "item";
+  }
+
+  function compareCourseStrings(a, b) {
+    const rank = (c) => {
+      const s = String(c || "").toUpperCase();
+      if (s.includes("INFANTIL") || s.includes("EI")) return 10;
+      const pri = s.match(/(\d)º?\s*PRIM/);
+      if (pri) return 20 + parseInt(pri[1], 10);
+      const eso = s.match(/(\d)º?\s*ESO/);
+      if (eso) return 30 + parseInt(eso[1], 10);
+      const bac = s.match(/(\d)º?\s*BACH/);
+      if (bac) return 40 + parseInt(bac[1], 10);
+      if (s.includes("FP") || s.includes("CF")) return 50;
+      return 80;
+    };
+    const rA = rank(a);
+    const rB = rank(b);
+    if (rA !== rB) return rA - rB;
+    return String(a).localeCompare(String(b), "es");
+  }
+
+  function rebuildDerivedGroups() {
+    const cfg = getCourseConfig();
+    const nextGroups = [];
+    const seenCourseLevel = new Set();
+
+    cfg.schools.forEach(sch => {
+      const schSched = getSchoolSchedules(sch.id);
+      const coursesSet = new Set();
+      ["ordinaria", "intensiva"].forEach(mode => {
+        const byDay = schSched[mode] || {};
+        Object.keys(byDay).forEach(d => {
+          const slots = byDay[d] || [];
+          slots.forEach(slot => {
+            if (slot && slot.type === "class" && slot.course && slot.course.trim()) {
+              coursesSet.add(slot.course.trim());
+            }
+          });
+        });
+      });
+
+      const sortedCourses = Array.from(coursesSet).sort(compareCourseStrings);
+      sortedCourses.forEach(course => {
+        const canonical = `${sch.id}|${course}`;
+        const id = LEGACY_GROUP_ID_MAP[canonical] || `${sch.id}__${slugifyKey(course)}`;
+        const level = getCourseLevel(course);
+        seenCourseLevel.add(level);
+        nextGroups.push({
+          id,
+          school: sch.id,
+          center: sch.name,
+          course,
+          shortName: formatCourseShort(course),
+          level
+        });
+      });
+    });
+
+    ALL_GROUPS = nextGroups;
+    const levels = Array.from(seenCourseLevel).sort(compareCourseStrings);
+    COURSE_LEVELS = levels.length > 0 ? levels : ["1º ESO", "2º ESO", "3º ESO", "4º ESO", "1º BACHILLERATO"];
+    if (!COURSE_LEVELS.includes(state.bankSelectedLevel) && COURSE_LEVELS.length > 0) {
+      state.bankSelectedLevel = COURSE_LEVELS[0];
+    }
+  }
+
+  function pad2(n) {
+    return String(n).padStart(2, "0");
+  }
+
+  function formatDateISO(d) {
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  }
+
+  function buildCourseWeeks(yearStart) {
+    const y = parseInt(yearStart, 10) || 2026;
+    const sept1 = new Date(y, 8, 1);
+    const aug31 = new Date(y + 1, 7, 31);
+    const schools = getSchools();
+
+    let firstDate = new Date(y, 8, 1);
+    const dow1 = firstDate.getDay();
+    if (dow1 === 6) firstDate.setDate(firstDate.getDate() + 2);
+    else if (dow1 === 0) firstDate.setDate(firstDate.getDate() + 1);
+
+    const fDow = firstDate.getDay();
+    let curMonday = new Date(firstDate.getFullYear(), firstDate.getMonth(), firstDate.getDate() + (1 - fDow));
+
+    const weeks = [];
+    let idx = 0;
+    while (curMonday <= aug31) {
+      const friday = new Date(curMonday.getFullYear(), curMonday.getMonth(), curMonday.getDate() + 4);
+      const weekStartDisplay = (idx === 0 && firstDate > curMonday && sept1.getDay() >= 2 && sept1.getDay() <= 5)
+        ? new Date(firstDate)
+        : new Date(curMonday);
+
+      // Mes dominante de la semana (miércoles)
+      const wed = new Date(curMonday.getFullYear(), curMonday.getMonth(), curMonday.getDate() + 2);
+      const mesUpper = MONTH_NAMES_UPPER[wed.getMonth() + 1];
+
+      const rangoStr = `${pad2(weekStartDisplay.getDate())}/${pad2(weekStartDisplay.getMonth() + 1)} - ${pad2(friday.getDate())}/${pad2(friday.getMonth() + 1)}`;
+      const wObj = {
+        week_index: idx,
+        week_num: idx + 1,
+        num_sem: `Semana ${idx + 1}`,
+        rango: rangoStr,
+        fechas: rangoStr,
+        date_start: formatDateISO(weekStartDisplay),
+        mes: mesUpper,
+        tipo_sem: "",
+        slot_notes: {}
+      };
+      schools.forEach(s => { wObj[s.id] = {}; });
+      weeks.push(wObj);
+
+      curMonday = new Date(curMonday.getFullYear(), curMonday.getMonth(), curMonday.getDate() + 7);
+      idx++;
+    }
+    return weeks;
+  }
+
+  function ensureFull12MonthWeeks(existingWeeks, yearStart) {
+    const y = parseInt(yearStart, 10) || 2026;
+    if (!Array.isArray(existingWeeks) || existingWeeks.length === 0) {
+      return buildCourseWeeks(y);
+    }
+    const list = existingWeeks.slice();
+    const last = list[list.length - 1];
+    if (!last || !last.date_start) return list;
+
+    const [ly, lm, ld] = last.date_start.split("-").map(Number);
+    const lastObj = new Date(ly, lm - 1, ld);
+    const lDow = lastObj.getDay();
+    const lMondayOffset = (lDow === 0) ? -6 : (1 - lDow);
+    let nextMonday = new Date(lastObj.getFullYear(), lastObj.getMonth(), lastObj.getDate() + lMondayOffset + 7);
+    const aug31 = new Date(y + 1, 7, 31);
+    const schools = getSchools();
+
+    while (nextMonday <= aug31) {
+      const friday = new Date(nextMonday.getFullYear(), nextMonday.getMonth(), nextMonday.getDate() + 4);
+      const wed = new Date(nextMonday.getFullYear(), nextMonday.getMonth(), nextMonday.getDate() + 2);
+      const nextIdx = list.length;
+      const rangoStr = `${pad2(nextMonday.getDate())}/${pad2(nextMonday.getMonth() + 1)} - ${pad2(friday.getDate())}/${pad2(friday.getMonth() + 1)}`;
+      const wObj = {
+        week_index: nextIdx,
+        week_num: nextIdx + 1,
+        num_sem: `Semana ${nextIdx + 1}`,
+        rango: rangoStr,
+        fechas: rangoStr,
+        date_start: formatDateISO(nextMonday),
+        mes: MONTH_NAMES_UPPER[wed.getMonth() + 1],
+        tipo_sem: "",
+        slot_notes: {}
+      };
+      schools.forEach(s => { wObj[s.id] = {}; });
+      list.push(wObj);
+      nextMonday = new Date(nextMonday.getFullYear(), nextMonday.getMonth(), nextMonday.getDate() + 7);
+    }
+    return list;
+  }
+
+  function updateCourseYearBadges() {
+    const full = getSchoolYearFullLabel();
+    const short = getSchoolYearShortLabel();
+    const badgeEl = document.getElementById("brand-year-badge");
+    if (badgeEl) badgeEl.textContent = short;
+    const wrapEl = document.getElementById("brand-badge-wrap");
+    if (wrapEl) wrapEl.title = `Sistema Unificado de Programación y Control Docente ${full}`;
+    const wpTitle = document.getElementById("week-picker-modal-title");
+    if (wpTitle) wpTitle.textContent = `🗓️ Seleccionar Semana del Curso Escolar (${full})`;
+    if (typeof document !== "undefined" && document.title) {
+      document.title = `Programación Docente ${short} — Planner & Tareas`;
+    }
   }
 
   function getGroupBySchoolCourse(school, course) {
@@ -260,7 +650,7 @@
       const m = d.getMonth() + 1;
       const dayNum = d.getDate();
       const dateStr = `${y}-${String(m).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
-      const isIntensiva = (m === 9 || m === 6);
+      const isIntensiva = isMonthIntensiva(m);
       days.push({
         dayIndex: i, // 0=Lun, 1=Mar, 2=Mié, 3=Jue, 4=Vie
         dayName: DAY_NAMES_SHORT[i],
@@ -269,21 +659,21 @@
         monthName: MONTH_NAMES_SHORT[m - 1],
         dateStr,
         isIntensiva,
-        school: (i === 0 || i === 2) ? "ribarroja" : ((i === 1 || i === 3) ? "manises" : "libre")
+        outsideCourse: isOutsideClassPeriod(dateStr),
+        school: getWeekdaySchool(i)
       });
     }
     return days;
   }
 
-  // Devuelve el día (0..3) y fecha exacta en que un grupo concreto tiene clase en la semana weekIdx
+  // Devuelve el día (0..4) y fecha exacta en que un grupo concreto tiene clase en la semana weekIdx
   function getGroupScheduleInWeek(school, course, weekIdx) {
     const days = getDatesForWeek(weekIdx);
     for (const day of days) {
       if (day.school !== school) continue;
       const mode = day.isIntensiva ? "intensiva" : "ordinaria";
-      const slots = (window.SCHEDULE_TEMPLATES[school] &&
-                     window.SCHEDULE_TEMPLATES[school][mode] &&
-                     window.SCHEDULE_TEMPLATES[school][mode][day.dayIndex]) || [];
+      const schSched = getSchoolSchedules(school);
+      const slots = (schSched[mode] && (schSched[mode][day.dayIndex] || schSched[mode][String(day.dayIndex)])) || [];
       const found = slots.find(s => s.type === "class" && s.course === course);
       if (found) {
         return {
@@ -293,14 +683,15 @@
           monthName: day.monthName,
           dateStr: day.dateStr,
           time: found.time,
-          isIntensiva: day.isIntensiva
+          isIntensiva: day.isIntensiva,
+          outsideCourse: day.outsideCourse
         };
       }
     }
     return null;
   }
 
-  // Determina si un grupo concreto NO tiene clase un día/semana por No Lectivo o Evento Especial
+  // Determina si un grupo concreto NO tiene clase un día/semana por No Lectivo, Fuera de curso o Evento Especial
   function getGroupTeachingStatus(school, course, weekIdx) {
     const sched = getGroupScheduleInWeek(school, course, weekIdx);
     const week = state.weeks[weekIdx];
@@ -311,6 +702,10 @@
     }
 
     const dateStr = sched.dateStr;
+    if (isOutsideClassPeriod(dateStr)) {
+      return { isLectivo: false, type: "outside_course", reason: "Sin alumnado", dateStr, sched };
+    }
+
     const isHoliday = !!(state.holidays && state.holidays[dateStr]);
     const calEv = state.calendarEvents && state.calendarEvents[dateStr];
 
@@ -335,7 +730,16 @@
       return { isLectivo: false, type: "no_lectivo", reason: "Vacaciones escolares", dateStr, sched };
     }
 
-    if (session.sesion === "Festivo" || session.sesion === "No Clase" || session.sesion === "Salida / Convivencia") {
+    const sesStr = String(session.sesion || "").trim().toLowerCase();
+    if (
+      session.sesion === "Festivo" ||
+      session.sesion === "No Clase" ||
+      session.sesion === "Salida / Convivencia" ||
+      sesStr.includes("no clase") ||
+      sesStr.includes("sin clase") ||
+      sesStr.includes("festivo") ||
+      sesStr.includes("salida")
+    ) {
       return { isLectivo: false, type: "evento", reason: session.tema || session.sesion, dateStr, sched };
     }
 
@@ -388,11 +792,15 @@
     if (scope === "day") return [baseDateStr];
     const weekDays = getWeekDatesFromDateStr(baseDateStr);
     if (weekDays.length <= 1) return [baseDateStr];
+    if (scope && scope.startsWith("school:")) {
+      const targetSchoolId = scope.slice("school:".length);
+      return weekDays.filter(d => getWeekdaySchool(d.dayIndex) === targetSchoolId).map(d => d.dateStr);
+    }
     if (scope === "ribarroja_week") {
-      return weekDays.filter(d => d.dayIndex === 0 || d.dayIndex === 2).map(d => d.dateStr);
+      return weekDays.filter(d => getWeekdaySchool(d.dayIndex) === "ribarroja").map(d => d.dateStr);
     }
     if (scope === "manises_week") {
-      return weekDays.filter(d => d.dayIndex === 1 || d.dayIndex === 3).map(d => d.dateStr);
+      return weekDays.filter(d => getWeekdaySchool(d.dayIndex) === "manises").map(d => d.dateStr);
     }
     return weekDays.map(d => d.dateStr); // "week" (Lun-Vie)
   }
@@ -502,6 +910,7 @@
 
   function createSnapshot() {
     return JSON.stringify({
+      courseConfig: state.courseConfig,
       weeks: state.weeks,
       holidays: state.holidays,
       calendarEvents: state.calendarEvents,
@@ -524,6 +933,7 @@
   function restoreSnapshot(snapStr) {
     try {
       const parsed = JSON.parse(snapStr);
+      if (parsed.courseConfig) state.courseConfig = normalizeCourseConfig(parsed.courseConfig);
       state.weeks = parsed.weeks || state.weeks;
       state.holidays = parsed.holidays || {};
       state.calendarEvents = parsed.calendarEvents || {};
@@ -531,6 +941,8 @@
       state.sessionBank = parsed.sessionBank || state.sessionBank;
       state.reserveSessions = parsed.reserveSessions || [];
       state.tareas = parsed.tareas || state.tareas;
+      rebuildDerivedGroups();
+      updateTopbarBadges();
       persistAll(false);
       renderWorkspace();
       updateTopbarBadges();
@@ -576,6 +988,7 @@
 
   function loadInitialState() {
     const base = deepClone(window.INITIAL_APP_DATA);
+    state.courseConfig = normalizeCourseConfig(base.courseConfig || null);
     state.weeks = base.weeks;
     state.holidays = base.holidays || {};
     state.calendarEvents = base.calendarEvents || {};
@@ -588,7 +1001,8 @@
       const rawUni = localStorage.getItem(STORAGE_KEY_UNIFIED);
       if (rawUni) {
         const parsed = JSON.parse(rawUni);
-        if (Array.isArray(parsed.weeks) && parsed.weeks.length === 44) state.weeks = parsed.weeks;
+        if (parsed.courseConfig) state.courseConfig = normalizeCourseConfig(parsed.courseConfig);
+        if (Array.isArray(parsed.weeks) && parsed.weeks.length >= 40) state.weeks = parsed.weeks;
         if (parsed.holidays) state.holidays = parsed.holidays;
         if (parsed.calendarEvents) state.calendarEvents = parsed.calendarEvents;
         if (parsed.dayMarks) state.dayMarks = parsed.dayMarks;
@@ -602,7 +1016,10 @@
       console.warn("Error leyendo almacenamiento unificado:", e);
     }
 
-    // Normalizar todas las sesiones de las 44 semanas
+    // Derivar grupos, asegurar las semanas de los 12 meses (Sep..Ago) y actualizar barra superior
+    rebuildDerivedGroups();
+    state.weeks = ensureFull12MonthWeeks(state.weeks, getSchoolYearStart());
+
     for (let w = 0; w < state.weeks.length; w++) {
       for (const g of ALL_GROUPS) {
         ensureSessionObject(w, g.school, g.course);
@@ -611,15 +1028,19 @@
 
     // Seleccionar la semana actual del calendario real al iniciar
     const { currentIdx } = getNowCalendarInfo();
-    state.currentWeekIndex = currentIdx;
-    const curWeek = state.weeks[currentIdx];
-    if (curWeek && curWeek.date_start) {
-      const mKey = curWeek.date_start.slice(0, 7);
-      if (SCHOOL_MONTHS.some(m => m.key === mKey)) {
-        state.matrixMonthKey = mKey;
-        state.calendarMonthKey = mKey;
-      }
+    state.currentWeekIndex = Math.max(0, Math.min(currentIdx, state.weeks.length - 1));
+    const months = getSchoolMonths();
+    const curWeek = state.weeks[state.currentWeekIndex];
+    const mKey = (curWeek && curWeek.date_start) ? curWeek.date_start.slice(0, 7) : "";
+    if (months.some(m => m.key === mKey)) {
+      state.matrixMonthKey = mKey;
+      state.calendarMonthKey = mKey;
+    } else if (months[0]) {
+      state.matrixMonthKey = months[0].key;
+      state.calendarMonthKey = months[0].key;
     }
+    settingsNuevoTargetYear = getSchoolYearStart() + 1;
+    updateTopbarBadges();
   }
 
   let saveTimer = null;
@@ -632,6 +1053,7 @@
     try {
       // 1. Guardar estado unificado
       localStorage.setItem(STORAGE_KEY_UNIFIED, JSON.stringify({
+        courseConfig: state.courseConfig,
         weeks: state.weeks,
         holidays: state.holidays,
         calendarEvents: state.calendarEvents,
@@ -645,6 +1067,7 @@
 
       // 2. Mantener compatibilidad directa con claves de Planner y Control de Clases
       localStorage.setItem(STORAGE_KEY_PLANNER, JSON.stringify({
+        courseConfig: state.courseConfig,
         weeks: state.weeks,
         holidays: state.holidays,
         calendarEvents: state.calendarEvents,
@@ -673,6 +1096,7 @@
   // ==========================================================================
 
   function updateTopbarBadges() {
+    updateCourseYearBadges();
     // 1. Título y rango de semana actual
     const w = state.weeks[state.currentWeekIndex] || state.weeks[0];
     const titleEl = document.getElementById("top-week-title");
@@ -861,7 +1285,7 @@
     const wk = state.weeks[idx];
     if (wk && wk.date_start) {
       const mKey = wk.date_start.slice(0, 7);
-      if (SCHOOL_MONTHS.some(m => m.key === mKey)) {
+      if (getSchoolMonths().some(m => m.key === mKey)) {
         state.matrixMonthKey = mKey;
       }
     }
@@ -893,53 +1317,199 @@
   }
 
   // ==========================================================================
-  // RENDERIZADO DE LA VISTA 1: PLANNER SEMANAL (FRANJAS ALINEADAS)
+  // RENDERIZADO DE LA VISTA 1: PLANNER SEMANAL (FRANJAS DINÁMICAS ALINEADAS)
   // ==========================================================================
 
-  function getFranjaDefinitions(isIntensiva) {
-    if (isIntensiva) {
-      return [
-        { index: 0, label: "08:00", duration: 55 },
-        { index: 1, label: "09:00", duration: 55 },
-        { index: 2, label: "09:50", duration: 55 },
-        { index: 3, label: "10:45", duration: 55 },
-        { index: 4, label: "11:25", duration: 55 },
-        { index: 5, label: "12:20", duration: 55 },
-        { index: 6, label: "13:15", duration: 55 }
-      ];
-    }
-    return [
-      { index: 0, label: "08:00", duration: 55 },
-      { index: 1, label: "09:00", duration: 55 },
-      { index: 2, label: "09:50", duration: 55 },
-      { index: 3, label: "10:45", duration: 55 },
-      { index: 4, label: "11:25", duration: 55 },
-      { index: 5, label: "12:20", duration: 55 },
-      { index: 6, label: "13:15", duration: 95 },
-      { index: 7, label: "15:00", duration: 55 },
-      { index: 8, label: "15:55", duration: 55 }
-    ];
+  function parseSlotTimeRange(timeStr) {
+    const m = String(timeStr || "").match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
+    if (!m) return { startMin: 540, endMin: 595, duration: 55 };
+    const startMin = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+    const endMin = parseInt(m[3], 10) * 60 + parseInt(m[4], 10);
+    return { startMin, endMin: Math.max(startMin + 5, endMin), duration: Math.max(5, endMin - startMin) };
   }
 
-  function getFranjaForSlot(slotTime) {
-    if (slotTime === "09:00 - 14:00") return { franja: 1, span: 5, isSpan: true, type: "viernes" };
-    if (slotTime === "15:00 - 16:50") return { franja: 7, span: 2, isSpan: true, type: "mie_tarde" };
-    if (slotTime === "10:45 - 11:00") return { franja: 3, sub: "lectura" };
-    if (slotTime === "11:00 - 11:25") return { franja: 3, sub: "recreo" };
+  function minutesToHHMM(min) {
+    const clamped = Math.max(0, Math.round(min));
+    const h = Math.floor(clamped / 60);
+    const m = clamped % 60;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  }
 
-    const parts = slotTime.split(" - ");
-    const [sh, sm] = parts[0].split(":").map(Number);
-    const sMin = sh * 60 + sm;
+  function getDaySlotsForWeekDay(day) {
+    if (!day || day.outsideCourse) return [];
+    if (day.school && day.school !== "libre") {
+      const mode = day.isIntensiva ? "intensiva" : "ordinaria";
+      const schSched = getSchoolSchedules(day.school);
+      return (schSched[mode] && (schSched[mode][day.dayIndex] || schSched[mode][String(day.dayIndex)])) || [];
+    }
+    if (day.dayIndex === 4) {
+      return [{ time: "09:00 - 14:00", label: "TIEMPO LIBRE / PLANIFICACIÓN", type: "activity" }];
+    }
+    return [];
+  }
 
-    if (sMin < 515) return { franja: 0 };
-    if (sMin < 575) return { franja: 1 };
-    if (sMin < 620) return { franja: 2 };
-    if (sMin < 680) return { franja: 3 };
-    if (sMin < 730) return { franja: 4 };
-    if (sMin < 785) return { franja: 5 };
-    if (sMin < 880) return { franja: 6 };
-    if (sMin < 940) return { franja: 7 };
-    return { franja: 8 };
+  function computeWeekFranjaModel(days) {
+    const daySlotsList = [];
+    const allItems = [];
+    let isIntensiva = !!(days[0] && days[0].isIntensiva);
+
+    (days || []).forEach(day => {
+      const slots = getDaySlotsForWeekDay(day);
+      daySlotsList.push({ day, slots });
+      slots.forEach((slot, sIdx) => {
+        const range = parseSlotTimeRange(slot.time);
+        allItems.push({
+          dayIndex: day.dayIndex,
+          slotIdx: sIdx,
+          slot,
+          ...range,
+          isSpan: false,
+          franja: 0,
+          spanEnd: 0,
+          subIndex: 0,
+          subTotal: 1
+        });
+      });
+    });
+
+    if (allItems.length === 0) {
+      const fallbackDefs = [
+        { index: 0, label: "09:00", startMin: 540, endMin: 595, duration: 55 },
+        { index: 1, label: "10:00", startMin: 600, endMin: 655, duration: 55 },
+        { index: 2, label: "11:00", startMin: 660, endMin: 715, duration: 55 },
+        { index: 3, label: "12:00", startMin: 720, endMin: 775, duration: 55 },
+        { index: 4, label: "13:00", startMin: 780, endMin: 840, duration: 60 }
+      ];
+      return {
+        isIntensiva,
+        franjaDefs: fallbackDefs,
+        endLabel: "14:00",
+        startDayMin: 540,
+        endDayMin: 840,
+        resolveItemPlacement: () => ({ franja: 0, span: 1, isSpan: false, subIndex: 0, subTotal: 1 })
+      };
+    }
+
+    // Marcar bloques largos (>= 100m) que abarcan al menos 2 tramos cortos de otros días
+    const nonLarge = allItems.filter(it => it.duration < 100);
+    allItems.forEach(it => {
+      if (it.duration >= 100) {
+        const covered = nonLarge.filter(other => {
+          const mid = (other.startMin + other.endMin) / 2;
+          return mid > it.startMin + 5 && mid < it.endMin - 5;
+        });
+        if (covered.length >= 2) it.isSpan = true;
+      }
+    });
+
+    const regularItems = allItems.filter(it => !it.isSpan).sort((a, b) => a.startMin - b.startMin || a.dayIndex - b.dayIndex);
+    const sourceForBands = regularItems.length > 0 ? regularItems : allItems.slice().sort((a, b) => a.startMin - b.startMin);
+
+    // Construir bandas horizontales agrupando franjas equivalentes entre colegios (<= 20 min diferencia)
+    const bands = [];
+    sourceForBands.forEach(item => {
+      let targetBand = null;
+      for (const b of bands) {
+        if (Math.abs(item.startMin - b.anchorStart) <= 20) {
+          targetBand = b;
+          break;
+        }
+        // Si es un sub-bloque corto (p.ej. Recreo tras Lectura) dentro de una banda ya abierta que termina después
+        if (item.duration <= 35 && item.startMin >= b.minStart && item.endMin <= b.maxEnd + 5) {
+          targetBand = b;
+          break;
+        }
+      }
+      if (!targetBand) {
+        bands.push({
+          index: bands.length,
+          anchorStart: item.startMin,
+          minStart: item.startMin,
+          maxEnd: item.endMin,
+          items: [item]
+        });
+      } else {
+        targetBand.items.push(item);
+        targetBand.minStart = Math.min(targetBand.minStart, item.startMin);
+        targetBand.maxEnd = Math.max(targetBand.maxEnd, item.endMin);
+      }
+    });
+
+    bands.forEach((b, idx) => { b.index = idx; });
+
+    const franjaDefs = bands.map((b, idx) => ({
+      index: idx,
+      label: minutesToHHMM(b.minStart),
+      startMin: b.minStart,
+      endMin: b.maxEnd,
+      duration: Math.max(25, b.maxEnd - b.minStart)
+    }));
+
+    // Asignar sub-índice cuando en un mismo día caen 2+ tramos en la misma banda (ej. Lectura + Recreo)
+    const placementByKey = new Map();
+    bands.forEach(b => {
+      const byDay = {};
+      b.items.forEach(it => {
+        if (!byDay[it.dayIndex]) byDay[it.dayIndex] = [];
+        byDay[it.dayIndex].push(it);
+      });
+      Object.keys(byDay).forEach(dKey => {
+        const arr = byDay[dKey].sort((a, z) => a.startMin - z.startMin);
+        arr.forEach((it, sIdx) => {
+          placementByKey.set(`${it.dayIndex}__${it.slotIdx}`, {
+            franja: b.index,
+            span: 1,
+            endFranja: b.index,
+            isSpan: false,
+            subIndex: sIdx,
+            subTotal: arr.length
+          });
+        });
+      });
+    });
+
+    // Colocar bloques largos spanning
+    allItems.filter(it => it.isSpan).forEach(it => {
+      let startIdx = 0;
+      let endIdx = franjaDefs.length - 1;
+      for (let i = 0; i < franjaDefs.length; i++) {
+        if (franjaDefs[i].endMin > it.startMin + 10) {
+          startIdx = i;
+          break;
+        }
+      }
+      for (let i = franjaDefs.length - 1; i >= startIdx; i--) {
+        if (franjaDefs[i].startMin < it.endMin - 10) {
+          endIdx = i;
+          break;
+        }
+      }
+      placementByKey.set(`${it.dayIndex}__${it.slotIdx}`, {
+        franja: startIdx,
+        span: Math.max(1, endIdx - startIdx + 1),
+        endFranja: endIdx,
+        isSpan: true,
+        subIndex: 0,
+        subTotal: 1
+      });
+    });
+
+    const maxEndMin = Math.max(
+      ...franjaDefs.map(f => f.endMin),
+      ...allItems.map(it => it.endMin)
+    );
+    const minStartMin = franjaDefs[0] ? franjaDefs[0].startMin : 480;
+
+    return {
+      isIntensiva,
+      franjaDefs,
+      endLabel: minutesToHHMM(maxEndMin),
+      startDayMin: minStartMin,
+      endDayMin: maxEndMin,
+      resolveItemPlacement: (dayIndex, slotIdx) => placementByKey.get(`${dayIndex}__${slotIdx}`) || {
+        franja: 0, span: 1, endFranja: 0, isSpan: false, subIndex: 0, subTotal: 1
+      }
+    };
   }
 
   function getSlotIcon(label) {
@@ -974,17 +1544,24 @@
     wrap.querySelectorAll(".meta-textarea").forEach(el => autoResizeTextarea(el, 18));
 
     const days = getDatesForWeek(state.currentWeekIndex);
-    const isIntensiva = !!(days[0] && days[0].isIntensiva);
-    const franjaDefs = getFranjaDefinitions(isIntensiva);
+    const model = computeWeekFranjaModel(days);
+    const franjaDefs = model.franjaDefs;
     const numFranjas = franjaDefs.length;
     const scale = 4.2;
 
-    const franjaHeights = franjaDefs.map(f => Math.max(Math.round(f.duration * scale), 42));
+    const franjaHeights = franjaDefs.map(f => Math.max(Math.round(Math.min(f.duration, 105) * scale), 48));
     const allSlots = Array.from(wrap.querySelectorAll(".session-card, .static-slot-block"));
 
+    // Calcular necesidad vertical de cada tarjeta individual (si hay sub-bloques en el mismo día, acumular su altura mínima)
+    const subDayTotals = {};
     allSlots.forEach(el => {
+      if (el.dataset.span) return;
       const fIdx = parseInt(el.dataset.franja, 10);
       if (isNaN(fIdx) || fIdx < 0 || fIdx >= numFranjas) return;
+      const subTotal = parseInt(el.dataset.subTotal || "1", 10);
+      const dayIdx = el.dataset.dayIndex || "0";
+
+      let cardNeed = 40;
       if (el.classList.contains("session-card")) {
         const topBar = el.querySelector(".card-top-bar");
         const titleRow = el.querySelector(".card-title-row");
@@ -996,15 +1573,23 @@
         const cH = contentEl ? Math.max(68, contentEl.scrollHeight) : 68;
         const mH = metaRows.reduce((acc, r) => acc + Math.max(22, r.offsetHeight || 24) + 3, 0);
         const sH = suspBanner ? Math.max(24, suspBanner.offsetHeight) : 0;
-        const needed = topH + titleH + sH + cH + mH + 18;
-        if (needed > franjaHeights[fIdx]) franjaHeights[fIdx] = needed;
-      } else if (el.classList.contains("static-slot-block")) {
+        cardNeed = topH + titleH + sH + cH + mH + 18;
+      } else {
         const contentEl = el.querySelector(".static-slot-textarea");
-        if (contentEl) {
-          const sH = Math.max(26, contentEl.scrollHeight);
-          const needed = 20 + sH + 12;
-          if (needed > franjaHeights[fIdx]) franjaHeights[fIdx] = needed;
+        const sH = contentEl ? Math.max(26, contentEl.scrollHeight) : 14;
+        cardNeed = contentEl ? (20 + sH + 12) : 34;
+      }
+
+      if (subTotal > 1) {
+        const sKey = `${fIdx}__${dayIdx}`;
+        if (!subDayTotals[sKey]) subDayTotals[sKey] = 0;
+        subDayTotals[sKey] += cardNeed + 4;
+        el.dataset.ownNeed = String(cardNeed);
+        if (subDayTotals[sKey] > franjaHeights[fIdx]) {
+          franjaHeights[fIdx] = subDayTotals[sKey];
         }
+      } else if (cardNeed > franjaHeights[fIdx]) {
+        franjaHeights[fIdx] = cardNeed;
       }
     });
 
@@ -1020,33 +1605,40 @@
     const axisCol = wrap.querySelector(".time-axis-column");
     if (axisCol) axisCol.style.height = totalGridHeight + "px";
 
+    // Posicionar sub-bloques ordenados dentro de su franja cuando subTotal > 1
+    const subRunningTop = {};
     allSlots.forEach(el => {
       const fIdx = parseInt(el.dataset.franja, 10);
       if (isNaN(fIdx) || fIdx < 0 || fIdx >= numFranjas) return;
       const fTop = franjaTops[fIdx];
       const fHeight = franjaHeights[fIdx];
-      const sub = el.dataset.sub;
 
-      if (!el.dataset.span) {
-        if (sub === "lectura") {
-          el.style.top = fTop + "px";
-          el.style.height = "34px";
-        } else if (sub === "recreo") {
-          el.style.top = (fTop + 36) + "px";
-          el.style.height = Math.max(fHeight - 40, 34) + "px";
-        } else {
-          el.style.top = fTop + "px";
-          el.style.height = (fHeight - 4) + "px";
-        }
-      } else if (el.dataset.spanType === "mie_tarde") {
+      if (el.dataset.span) {
+        const endIdx = Math.min(parseInt(el.dataset.spanEnd || String(fIdx), 10), numFranjas - 1);
+        const spanBottom = franjaTops[endIdx] + franjaHeights[endIdx];
         el.style.top = fTop + "px";
-        el.style.height = ((franjaHeights[7] || 0) + (franjaHeights[8] || 0) - 4) + "px";
-      } else if (el.dataset.spanType === "viernes") {
-        const top1 = franjaTops[1] || 0;
-        const endF = Math.min(6, numFranjas - 1);
-        const bottom = franjaTops[endF] + franjaHeights[endF];
-        el.style.top = top1 + "px";
-        el.style.height = Math.max(bottom - top1 - 4, 140) + "px";
+        el.style.height = Math.max(spanBottom - fTop - 4, 80) + "px";
+        return;
+      }
+
+      const subTotal = parseInt(el.dataset.subTotal || "1", 10);
+      const subIdx = parseInt(el.dataset.subIndex || "0", 10);
+      if (subTotal > 1) {
+        const sKey = `${fIdx}__${el.dataset.dayIndex || "0"}`;
+        if (subIdx === 0) subRunningTop[sKey] = fTop;
+        const curTop = subRunningTop[sKey] !== undefined ? subRunningTop[sKey] : fTop;
+        let h = 34;
+        if (subIdx === subTotal - 1) {
+          h = Math.max((fTop + fHeight - 4) - curTop, 34);
+        } else {
+          h = Math.max(parseInt(el.dataset.ownNeed || "34", 10), 34);
+        }
+        el.style.top = curTop + "px";
+        el.style.height = h + "px";
+        subRunningTop[sKey] = curTop + h + 4;
+      } else {
+        el.style.top = fTop + "px";
+        el.style.height = (fHeight - 4) + "px";
       }
     });
 
@@ -1067,12 +1659,14 @@
     });
     if (timeLabels[numFranjas]) {
       timeLabels[numFranjas].style.top = (franjaTops[numFranjas - 1] + franjaHeights[numFranjas - 1]) + "px";
-      timeLabels[numFranjas].textContent = isIntensiva ? "14:20" : "16:50";
+      timeLabels[numFranjas].textContent = model.endLabel;
     }
 
     lastWeekFranjaLayout = {
       weekIdx: state.currentWeekIndex,
-      isIntensiva,
+      isIntensiva: model.isIntensiva,
+      startDayMin: model.startDayMin,
+      endDayMin: model.endDayMin,
       franjaDefs,
       franjaTops,
       franjaHeights
@@ -1092,13 +1686,15 @@
     const defs = layout.franjaDefs;
     const tops = layout.franjaTops;
     const heights = layout.franjaHeights;
-    const endDayMin = layout.isIntensiva ? 860 : 1010; // 14:20 o 16:50
+    const endDayMin = layout.endDayMin || (layout.isIntensiva ? 860 : 1010);
 
     for (let i = 0; i < defs.length; i++) {
-      const sMin = parseHourLabelMinutes(defs[i].label);
-      const eMin = (i + 1 < defs.length) ? parseHourLabelMinutes(defs[i + 1].label) : endDayMin;
-      if (exactMin >= sMin && exactMin < eMin) {
-        const span = Math.max(1, eMin - sMin);
+      const sMin = defs[i].startMin !== undefined ? defs[i].startMin : parseHourLabelMinutes(defs[i].label);
+      const nextMin = (i + 1 < defs.length)
+        ? (defs[i + 1].startMin !== undefined ? defs[i + 1].startMin : parseHourLabelMinutes(defs[i + 1].label))
+        : endDayMin;
+      if (exactMin >= sMin && exactMin < nextMin) {
+        const span = Math.max(1, nextMin - sMin);
         const prog = (exactMin - sMin) / span;
         return tops[i] + prog * heights[i];
       }
@@ -1123,8 +1719,6 @@
 
     const days = getDatesForWeek(state.currentWeekIndex);
     const hasTodayInWeek = days.some(d => d.dateStr === todayStr);
-    const isIntensiva = !!(days[0] && days[0].isIntensiva);
-    const maxMinutes = isIntensiva ? 860 : 1010;
 
     let timeLine = document.getElementById("current-time-indicator");
     let timeBadge = document.getElementById("time-axis-now-badge");
@@ -1135,7 +1729,10 @@
       Array.isArray(lastWeekFranjaLayout.franjaTops) &&
       Array.isArray(lastWeekFranjaLayout.franjaHeights);
 
-    if (hasTodayInWeek && exactMin >= 480 && exactMin <= maxMinutes && layoutReady) {
+    const minMinutes = (layoutReady && lastWeekFranjaLayout.startDayMin !== undefined) ? lastWeekFranjaLayout.startDayMin : 480;
+    const maxMinutes = (layoutReady && lastWeekFranjaLayout.endDayMin !== undefined) ? lastWeekFranjaLayout.endDayMin : 1010;
+
+    if (hasTodayInWeek && exactMin >= minMinutes && exactMin <= maxMinutes && layoutReady) {
       const targetTop = Math.round(computeWeekCurrentTimeTop(lastWeekFranjaLayout, exactMin) * 10) / 10;
 
       if (!timeLine) {
@@ -1177,8 +1774,8 @@
     const weekIdx = state.currentWeekIndex;
     const week = state.weeks[weekIdx];
     const days = getDatesForWeek(weekIdx);
-    const isIntensiva = !!(days[0] && days[0].isIntensiva);
-    const franjaDefs = getFranjaDefinitions(isIntensiva);
+    const model = computeWeekFranjaModel(days);
+    const franjaDefs = model.franjaDefs;
     const numFranjas = franjaDefs.length;
     const { todayStr } = getNowCalendarInfo();
 
@@ -1196,31 +1793,39 @@
 
     days.forEach(day => {
       const isToday = (day.dateStr === todayStr);
+      const isOutside = !!day.outsideCourse;
       const isNoLectivo = !!(state.holidays && state.holidays[day.dateStr]) ||
         (state.calendarEvents[day.dateStr] && (state.calendarEvents[day.dateStr].type === "no_lectivo" || state.calendarEvents[day.dateStr].type === "festivo" || state.calendarEvents[day.dateStr].classesHeld === false));
       const calEv = state.calendarEvents[day.dateStr];
       const hasSpecialEvent = !!(calEv && calEv.type === "evento");
       const dayMarks = getDayMarks(day.dateStr);
+      const schMeta = getSchoolMeta(day.school);
+      const schStyle = (!isOutside && day.school !== "libre") ? getSchoolStyleAttr(day.school) : "";
 
       const hCell = document.createElement("div");
-      hCell.className = `sticky-header-cell ${day.school}` + (isNoLectivo ? " is-festivo" : "") + (isToday ? " is-today" : "");
+      const schCls = (!isOutside && day.school !== "libre") ? `school-themed ${day.school}` : "libre";
+      hCell.className = `sticky-header-cell ${schCls}` + ((isNoLectivo || isOutside) ? " is-festivo" : "") + (isToday ? " is-today" : "");
+      if (schStyle) hCell.style.cssText = schStyle;
 
-      const schoolLabel = day.school === "ribarroja" ? "Riba-roja" : (day.school === "manises" ? "Manises" : "Planificación");
+      const schoolLabel = isOutside
+        ? "Sin alumnado"
+        : (day.school !== "libre" ? schMeta.name : "Planificación");
 
       hCell.innerHTML = `
         <div class="header-day-top">
           <span class="header-day-name">${day.dayName} ${day.dateNum} ${day.monthName}</span>
           <div class="header-day-controls">
-            <span class="header-school-badge ${isNoLectivo ? 'festivo' : day.school}">${isNoLectivo ? 'No lectivo' : schoolLabel}</span>
-            ${day.school !== "libre" ? `
+            <span class="header-school-badge ${isOutside ? 'libre' : (isNoLectivo ? 'festivo' : (day.school !== 'libre' ? `school-themed ${day.school}` : 'libre'))}" ${(!isOutside && !isNoLectivo && day.school !== 'libre') ? `style="${schStyle}"` : ""}>${isOutside ? 'Sin alumnado' : (isNoLectivo ? 'No lectivo' : escapeHTML(schoolLabel))}</span>
+            ${(!isOutside && day.school !== "libre") ? `
               <button type="button" class="day-hdr-icon-btn ${isNoLectivo ? 'active-festivo' : ''}" onclick="App.toggleDayNoLectivo('${day.dateStr}')" title="${isNoLectivo ? 'Día No Lectivo (clic para marcar como Lectivo)' : 'Marcar día completo como No Lectivo'}">🏖️</button>
               <button type="button" class="day-hdr-icon-btn ${hasSpecialEvent ? 'active-evento' : ''}" onclick="App.openCalendarDayModal('${day.dateStr}')" title="Configurar Evento Especial (para uno, varios o todos los grupos del día)">🎪</button>
             ` : ""}
             <button type="button" class="day-hdr-icon-btn ${dayMarks.length > 0 ? 'active-marks' : ''}" onclick="App.openCalendarDayModal('${day.dateStr}')" title="Añadir o editar Hitos de Programación (Exámenes, Evaluación, Recup., Claustro)">📌</button>
           </div>
         </div>
-        ${isNoLectivo ? `<div class="header-status-sub festivo">🏖️ ${escapeHTML((calEv && calEv.title) || 'Día No Lectivo')}</div>` : ""}
-        ${!isNoLectivo && hasSpecialEvent ? `<div class="header-status-sub evento">🎪 ${escapeHTML(calEv.title || 'Evento especial')}</div>` : ""}
+        ${isOutside ? `<div class="header-status-sub festivo">🏫 Fuera de periodo lectivo</div>` : ""}
+        ${!isOutside && isNoLectivo ? `<div class="header-status-sub festivo">🏖️ ${escapeHTML((calEv && calEv.title) || 'Día No Lectivo')}</div>` : ""}
+        ${!isOutside && !isNoLectivo && hasSpecialEvent ? `<div class="header-status-sub evento">🎪 ${escapeHTML(calEv.title || 'Evento especial')}</div>` : ""}
         ${dayMarks.length > 0 ? `
           <div class="week-hdr-marks">
             ${dayMarks.map(m => {
@@ -1255,21 +1860,25 @@
 
     days.forEach(day => {
       const dayCol = document.createElement("div");
-      const isNoLectivo = !!(state.holidays && state.holidays[day.dateStr]);
-      dayCol.className = `day-body-column ${day.school}` + (isNoLectivo ? " is-festivo" : "");
+      const isNoLectivo = !!(state.holidays && state.holidays[day.dateStr]) || !!day.outsideCourse;
+      const schCls = (!day.outsideCourse && day.school !== "libre") ? `school-themed ${day.school}` : "libre";
+      const schStyle = (!day.outsideCourse && day.school !== "libre") ? getSchoolStyleAttr(day.school) : "";
+      dayCol.className = `day-body-column ${schCls}` + (isNoLectivo ? " is-festivo" : "");
+      if (schStyle) dayCol.style.cssText = schStyle;
 
-      let slots = [];
-      if (day.school === "ribarroja" || day.school === "manises") {
-        const mode = day.isIntensiva ? "intensiva" : "ordinaria";
-        slots = (window.SCHEDULE_TEMPLATES[day.school] &&
-                 window.SCHEDULE_TEMPLATES[day.school][mode] &&
-                 window.SCHEDULE_TEMPLATES[day.school][mode][day.dayIndex]) || [];
-      } else if (day.dayIndex === 4) {
-        slots = [{ time: "09:00 - 14:00", label: "TIEMPO LIBRE / PLANIFICACIÓN", type: "activity" }];
+      const slots = getDaySlotsForWeekDay(day);
+
+      if (day.outsideCourse && slots.length === 0) {
+        const outsideNote = document.createElement("div");
+        outsideNote.className = "static-slot-block libre";
+        outsideNote.dataset.franja = "0";
+        outsideNote.dataset.dayIndex = String(day.dayIndex);
+        outsideNote.innerHTML = `<div class="static-slot-header"><span class="slot-label">🏫 Sin alumnado</span></div><div style="font-size:11px;color:var(--text-secondary);padding:2px 4px;">Día fuera del intervalo lectivo configurado. Puedes añadir hitos con 📌 en la cabecera.</div>`;
+        dayCol.appendChild(outsideNote);
       }
 
-      slots.forEach(slot => {
-        const fInfo = getFranjaForSlot(slot.time);
+      slots.forEach((slot, slotIdx) => {
+        const fInfo = model.resolveItemPlacement(day.dayIndex, slotIdx);
 
         if (slot.type === "class") {
           const school = day.school;
@@ -1278,20 +1887,17 @@
           const teachStatus = getGroupTeachingStatus(school, course, weekIdx);
           const isPrep = !!session.preparada;
 
-          // Filtro de búsqueda si está activo
-          if (state.searchQuery) {
-            const hay = `${course} ${session.tema} ${session.actividades} ${session.avisos} ${session.educamos} ${session.imprimir}`.toLowerCase();
-            if (!hay.includes(state.searchQuery)) {
-              // Mostrar atenuada si no coincide con búsqueda
-            }
-          }
-
           const card = document.createElement("div");
-          card.className = `session-card ${school}` + (!teachStatus.isLectivo ? " is-suspended-session" : "");
-          card.dataset.franja = fInfo.franja;
-          if (fInfo.sub) card.dataset.sub = fInfo.sub;
-          if (fInfo.span) card.dataset.span = fInfo.span;
-          if (fInfo.type) card.dataset.spanType = fInfo.type;
+          card.className = `session-card school-themed ${school}` + (!teachStatus.isLectivo ? " is-suspended-session" : "");
+          if (schStyle) card.style.cssText = schStyle;
+          card.dataset.franja = String(fInfo.franja);
+          card.dataset.dayIndex = String(day.dayIndex);
+          card.dataset.subIndex = String(fInfo.subIndex || 0);
+          card.dataset.subTotal = String(fInfo.subTotal || 1);
+          if (fInfo.isSpan) {
+            card.dataset.span = String(fInfo.span);
+            card.dataset.spanEnd = String(fInfo.endFranja);
+          }
 
           if (state.searchQuery) {
             const hay = `${course} ${session.tema} ${session.actividades} ${session.avisos} ${session.educamos} ${session.imprimir}`.toLowerCase();
@@ -1303,7 +1909,7 @@
           topBar.innerHTML = `
             <div class="card-top-left">
               <span class="card-course-badge">${escapeHTML(formatCourseShort(course))}</span>
-              <span class="card-time-text">${slot.time}</span>
+              <span class="card-time-text">${escapeHTML(slot.time)}</span>
               <button type="button" class="prep-icon-btn ${isPrep ? 'is-prep' : 'is-unprep'}" onclick="App.togglePrepared('${school}','${course}',${weekIdx})" title="${isPrep ? 'Sesión preparada (clic para desmarcar)' : 'Marcar sesión como preparada'}">
                 ${isPrep ? "✓" : "○"}
               </button>
@@ -1457,10 +2063,14 @@
           const sInfo = getSlotIcon(slot.label);
           const staticCard = document.createElement("div");
           staticCard.className = `static-slot-block ${day.school} ${sInfo.cls}`;
-          staticCard.dataset.franja = fInfo.franja;
-          if (fInfo.sub) staticCard.dataset.sub = fInfo.sub;
-          if (fInfo.span) staticCard.dataset.span = fInfo.span;
-          if (fInfo.type) staticCard.dataset.spanType = fInfo.type;
+          staticCard.dataset.franja = String(fInfo.franja);
+          staticCard.dataset.dayIndex = String(day.dayIndex);
+          staticCard.dataset.subIndex = String(fInfo.subIndex || 0);
+          staticCard.dataset.subTotal = String(fInfo.subTotal || 1);
+          if (fInfo.isSpan) {
+            staticCard.dataset.span = String(fInfo.span);
+            staticCard.dataset.spanEnd = String(fInfo.endFranja);
+          }
 
           const slotKey = `${day.dayIndex}__${slot.time}`;
           const noteVal = (week.slot_notes && week.slot_notes[slotKey]) || "";
@@ -1469,11 +2079,11 @@
           headerDiv.className = "static-slot-header";
           headerDiv.innerHTML = `
             <span class="slot-label">${sInfo.icon} ${escapeHTML(slot.label)}</span>
-            <span class="slot-time">${slot.time}</span>
+            <span class="slot-time">${escapeHTML(slot.time)}</span>
           `;
           staticCard.appendChild(headerDiv);
 
-          const isLectura = sInfo.cls === "lectura" || fInfo.sub === "lectura" || (slot.label && slot.label.toUpperCase().includes("LECTURA"));
+          const isLectura = sInfo.cls === "lectura" || (slot.label && slot.label.toUpperCase().includes("LECTURA"));
           if (!isLectura) {
             const noteArea = document.createElement("textarea");
             noteArea.className = "inline-field inline-content static-slot-textarea";
@@ -1550,7 +2160,7 @@
 
   function copySessionToClipboard(school, course, weekIdx) {
     const s = ensureSessionObject(weekIdx, school, course);
-    const schName = school === "ribarroja" ? "Riba-roja" : "Manises";
+    const schName = getSchoolMeta(school).name;
     state.clipboard = {
       tema: s.tema || "",
       actividades: s.actividades || "",
@@ -1772,7 +2382,8 @@
   function openPasteConflictModal(clipObj, targetSchool, targetCourse, targetWeekIdx) {
     activeConflictContext = { clipObj: deepClone(clipObj), targetSchool, targetCourse, targetWeekIdx };
     const existing = ensureSessionObject(targetWeekIdx, targetSchool, targetCourse);
-    const schName = targetSchool === "ribarroja" ? "🔴 Riba-roja" : "🔵 Manises";
+    const sMeta = getSchoolMeta(targetSchool);
+    const schName = `${sMeta.icon} ${sMeta.name}`;
     const body = document.getElementById("paste-conflict-body");
     if (!body) return;
 
@@ -1874,26 +2485,31 @@
 
   function getFilteredWeeksForMatrix() {
     const scope = state.matrixScope || "month";
+    const months = getSchoolMonths();
+    const mSepDic = new Set(months.slice(0, 4).map(m => m.key));
+    const mEneMar = new Set(months.slice(4, 7).map(m => m.key));
+    const mAbrJun = new Set(months.slice(7, 10).map(m => m.key));
+
     if (scope === "all") {
       return state.weeks.map((w, i) => ({ week: w, idx: i }));
     }
     if (scope === "trim1") {
-      return state.weeks.map((w, i) => ({ week: w, idx: i })).filter(x => x.idx >= 0 && x.idx <= 15);
+      return state.weeks.map((w, i) => ({ week: w, idx: i })).filter(x => x.week.date_start && mSepDic.has(x.week.date_start.slice(0, 7)));
     }
     if (scope === "trim2") {
-      return state.weeks.map((w, i) => ({ week: w, idx: i })).filter(x => x.idx >= 16 && x.idx <= 29);
+      return state.weeks.map((w, i) => ({ week: w, idx: i })).filter(x => x.week.date_start && mEneMar.has(x.week.date_start.slice(0, 7)));
     }
     if (scope === "trim3") {
-      return state.weeks.map((w, i) => ({ week: w, idx: i })).filter(x => x.idx >= 30);
+      return state.weeks.map((w, i) => ({ week: w, idx: i })).filter(x => x.week.date_start && mAbrJun.has(x.week.date_start.slice(0, 7)));
     }
 
     // Por mes (visión mensual de todos los grupos)
-    const mObj = SCHOOL_MONTHS.find(m => m.key === state.matrixMonthKey) || SCHOOL_MONTHS[2];
+    const mObj = months.find(m => m.key === state.matrixMonthKey) || months[2] || months[0];
     return state.weeks
       .map((w, i) => ({ week: w, idx: i }))
       .filter(({ week }) => {
-        if ((week.mes || "").toUpperCase() === mObj.mesUpper) return true;
         if (week.date_start && week.date_start.startsWith(mObj.key)) return true;
+        if ((week.mes || "").toUpperCase() === mObj.mesUpper && (!week.date_start || week.date_start.startsWith(String(mObj.year)))) return true;
         return false;
       });
   }
@@ -1905,8 +2521,10 @@
     // 1. Barra de Filtros de Matriz y Replicación
     const toolbar = document.createElement("div");
     toolbar.className = "subview-toolbar";
+    const months = getSchoolMonths();
+    const schools = getSchools();
 
-    const monthOpts = SCHOOL_MONTHS.map(m =>
+    const monthOpts = months.map(m =>
       `<option value="${m.key}" ${m.key === state.matrixMonthKey ? "selected" : ""}>🗓️ ${m.name}</option>`
     ).join("");
 
@@ -1917,7 +2535,7 @@
           <button type="button" class="filter-pill-btn ${state.matrixScope === 'trim1' ? 'active' : ''}" onclick="App.setMatrixScope('trim1')">1º Trim</button>
           <button type="button" class="filter-pill-btn ${state.matrixScope === 'trim2' ? 'active' : ''}" onclick="App.setMatrixScope('trim2')">2º Trim</button>
           <button type="button" class="filter-pill-btn ${state.matrixScope === 'trim3' ? 'active' : ''}" onclick="App.setMatrixScope('trim3')">3º Trim</button>
-          <button type="button" class="filter-pill-btn ${state.matrixScope === 'all' ? 'active' : ''}" onclick="App.setMatrixScope('all')">Curso Completo (44 sem)</button>
+          <button type="button" class="filter-pill-btn ${state.matrixScope === 'all' ? 'active' : ''}" onclick="App.setMatrixScope('all')">Curso Completo (${state.weeks.length} sem)</button>
         </div>
 
         ${state.matrixScope === "month" ? `
@@ -1933,14 +2551,15 @@
         <div class="filter-pill-group" role="group" aria-label="Filtrar por nivel">
           <button type="button" class="filter-pill-btn ${state.matrixLevelFilter === 'all' ? 'active' : ''}" onclick="App.setMatrixLevelFilter('all')">Todos los niveles</button>
           ${COURSE_LEVELS.map(lvl => `
-            <button type="button" class="filter-pill-btn ${state.matrixLevelFilter === lvl ? 'active' : ''}" onclick="App.setMatrixLevelFilter('${lvl}')">${lvl.replace("BACHILLERATO", "BAC")}</button>
+            <button type="button" class="filter-pill-btn ${state.matrixLevelFilter === lvl ? 'active' : ''}" onclick="App.setMatrixLevelFilter('${escapeHTML(lvl)}')">${escapeHTML(lvl.replace("BACHILLERATO", "BAC"))}</button>
           `).join("")}
         </div>
 
         <div class="filter-pill-group" role="group" aria-label="Filtrar por centro">
-          <button type="button" class="filter-pill-btn ${state.matrixSchoolFilter === 'ambos' ? 'active' : ''}" onclick="App.setMatrixSchoolFilter('ambos')">Ambos</button>
-          <button type="button" class="filter-pill-btn ${state.matrixSchoolFilter === 'ribarroja' ? 'active' : ''}" onclick="App.setMatrixSchoolFilter('ribarroja')">🔴 Riba-roja</button>
-          <button type="button" class="filter-pill-btn ${state.matrixSchoolFilter === 'manises' ? 'active' : ''}" onclick="App.setMatrixSchoolFilter('manises')">🔵 Manises</button>
+          <button type="button" class="filter-pill-btn ${state.matrixSchoolFilter === 'ambos' ? 'active' : ''}" onclick="App.setMatrixSchoolFilter('ambos')">Todos</button>
+          ${schools.map(s => `
+            <button type="button" class="filter-pill-btn ${state.matrixSchoolFilter === s.id ? 'active' : ''}" onclick="App.setMatrixSchoolFilter('${escapeHTML(s.id)}')">${escapeHTML(s.icon)} ${escapeHTML(s.name)}</button>
+          `).join("")}
         </div>
       </div>
     `;
@@ -2011,9 +2630,9 @@
 
       groupsOfLevel.forEach(grp => {
         const tr = document.createElement("tr");
-        const schBadge = grp.school === "ribarroja"
-          ? `<span class="header-school-badge ribarroja">🔴 Riba-roja</span>`
-          : `<span class="header-school-badge manises">🔵 Manises</span>`;
+        const sMeta = getSchoolMeta(grp.school);
+        const sStyle = getSchoolStyleAttr(grp.school);
+        const schBadge = `<span class="header-school-badge school-themed ${grp.school}" style="${sStyle}">${escapeHTML(sMeta.icon)} ${escapeHTML(sMeta.name)}</span>`;
 
         const rowTh = document.createElement("th");
         rowTh.className = "sticky-group-row-hdr";
@@ -2141,7 +2760,8 @@
     }
 
     pendingDeleteMatrixSession = { school, course, weekIdx };
-    const schName = school === "ribarroja" ? "🔴 Riba-roja" : "🔵 Manises";
+    const sMeta = getSchoolMeta(school);
+    const schName = `${sMeta.icon} ${sMeta.name}`;
     const wk = state.weeks[weekIdx] || {};
     const body = document.getElementById("confirm-delete-session-body");
     if (body) {
@@ -2373,18 +2993,21 @@
   function getDayGroupsFromSchedule(dateStr) {
     const [y, m, d] = dateStr.split("-").map(Number);
     const dow = new Date(y, m - 1, d).getDay(); // 0=Dom, 1=Lun..5=Vie, 6=Sáb
-    if (dow < 1 || dow > 4) return { school: null, dayIndex: dow - 1, groups: [] };
-    const dayIndex = dow - 1; // 0=Lun, 1=Mar, 2=Mié, 3=Jue
-    const school = (dayIndex === 0 || dayIndex === 2) ? "ribarroja" : "manises";
-    const mode = (m === 9 || m === 6) ? "intensiva" : "ordinaria";
-    const slots = (window.SCHEDULE_TEMPLATES[school] &&
-                   window.SCHEDULE_TEMPLATES[school][mode] &&
-                   window.SCHEDULE_TEMPLATES[school][mode][dayIndex]) || [];
+    if (dow < 1 || dow > 5) return { school: null, dayIndex: dow - 1, groups: [], outsideCourse: false };
+    const dayIndex = dow - 1; // 0=Lun..4=Vie
+    const outsideCourse = isOutsideClassPeriod(dateStr);
+    const school = getWeekdaySchool(dayIndex);
+    if (!school || school === "libre" || outsideCourse) {
+      return { school: school === "libre" ? null : school, dayIndex, groups: [], outsideCourse };
+    }
+    const mode = isMonthIntensiva(m) ? "intensiva" : "ordinaria";
+    const schSched = getSchoolSchedules(school);
+    const slots = (schSched[mode] && (schSched[mode][dayIndex] || schSched[mode][String(dayIndex)])) || [];
     const groups = slots.filter(s => s.type === "class").map(s => ({
       course: s.course,
       time: s.time
     }));
-    return { school, dayIndex, groups };
+    return { school, dayIndex, groups, outsideCourse: false };
   }
 
   function findWeekIndexByDate(dateStr) {
@@ -2396,17 +3019,18 @@
   }
 
   function renderPlannerCalendarView(container) {
-    const mObj = SCHOOL_MONTHS.find(m => m.key === state.calendarMonthKey) || SCHOOL_MONTHS[2];
+    const months = getSchoolMonths();
+    const mObj = months.find(m => m.key === state.calendarMonthKey) || months[2] || months[0];
     const { year, month } = mObj;
 
     const wrap = document.createElement("div");
     wrap.className = "calendar-view-container";
 
-    // Barra superior mensual
+    // Barra superior mensual (12 meses reales Sep..Ago)
     const toolbar = document.createElement("div");
     toolbar.className = "subview-toolbar";
-    const monthOpts = SCHOOL_MONTHS.map(m =>
-      `<option value="${m.key}" ${m.key === state.calendarMonthKey ? "selected" : ""}>🗓️ ${m.name}</option>`
+    const monthOpts = months.map(m =>
+      `<option value="${m.key}" ${m.key === mObj.key ? "selected" : ""}>🗓️ ${m.name}</option>`
     ).join("");
 
     toolbar.innerHTML = `
@@ -2416,7 +3040,7 @@
         <button type="button" class="corporate-btn" onclick="App.stepCalendarMonth(1)">Mes siguiente ▶</button>
       </div>
       <div class="toolbar-cluster" style="font-size:11.5px;color:var(--text-secondary);">
-        <span>💡 Usa <strong>🟢 Lectivo / 🏖️ No lectivo</strong> para festivos, y <strong>🎪 Evento / 📌 Hito</strong> para añadir Exámenes, Evaluaciones, Recup. o Claustros sin suspender clase.</span>
+        <span>💡 Usa <strong>🟢 Lectivo / 🏖️ No lectivo</strong> para festivos, y <strong>🎪 Evento / 📌 Hito</strong> para añadir Exámenes, Evaluaciones, Recup. o Claustros.</span>
       </div>
     `;
     wrap.appendChild(toolbar);
@@ -2424,22 +3048,28 @@
     const scroll = document.createElement("div");
     scroll.className = "cal-grid-scroll";
 
-    // Cabeceras Lunes a Domingo en barra fija superior durante scroll vertical
-    const headers = [
-      { name: "LUNES", sub: "🔴 Riba-roja", cls: "ribarroja" },
-      { name: "MARTES", sub: "🔵 Manises", cls: "manises" },
-      { name: "MIÉRCOLES", sub: "🔴 Riba-roja", cls: "ribarroja" },
-      { name: "JUEVES", sub: "🔵 Manises", cls: "manises" },
-      { name: "VIERNES", sub: "☕ Planificación", cls: "" },
-      { name: "SÁB", sub: "", cls: "" },
-      { name: "DOM", sub: "", cls: "" }
-    ];
+    // Cabeceras Lunes a Domingo generadas dinámicamente desde courseConfig.weekdaySchools
+    const headers = [];
+    for (let i = 0; i < 5; i++) {
+      const sId = getWeekdaySchool(i);
+      const sMeta = getSchoolMeta(sId);
+      headers.push({
+        name: DAY_NAMES_FULL[i],
+        sub: sId !== "libre" ? `${sMeta.icon} ${sMeta.name}` : "☕ Planificación",
+        schoolId: sId
+      });
+    }
+    headers.push({ name: "SÁB", sub: "", schoolId: "" });
+    headers.push({ name: "DOM", sub: "", schoolId: "" });
+
     const stickyBar = document.createElement("div");
     stickyBar.className = "cal-weekday-sticky-bar";
     headers.forEach(h => {
       const hEl = document.createElement("div");
-      hEl.className = `cal-weekday-hdr ${h.cls}`;
-      hEl.innerHTML = `<span>${h.name}</span><span style="font-size:9.5px;opacity:0.85;">${h.sub}</span>`;
+      const hasSchool = !!(h.schoolId && h.schoolId !== "libre");
+      hEl.className = `cal-weekday-hdr` + (hasSchool ? ` school-themed ${h.schoolId}` : "");
+      if (hasSchool) hEl.style.cssText = getSchoolStyleAttr(h.schoolId);
+      hEl.innerHTML = `<span>${h.name}</span><span style="font-size:9.5px;opacity:0.88;">${escapeHTML(h.sub)}</span>`;
       stickyBar.appendChild(hEl);
     });
     scroll.appendChild(stickyBar);
@@ -2461,32 +3091,35 @@
       const dow = new Date(year, month - 1, d).getDay();
       const isWeekend = (dow === 0 || dow === 6);
       const wIdx = findWeekIndexByDate(dateStr);
-      const { school, groups } = getDayGroupsFromSchedule(dateStr);
-
-      const daySchool = (dow === 1 || dow === 3) ? "ribarroja" :
-                        (dow === 2 || dow === 4) ? "manises" :
-                        (dow === 5) ? "planificacion" : "";
+      const { school, groups, outsideCourse } = getDayGroupsFromSchedule(dateStr);
+      const dayIdx = dow - 1;
+      const cfgSchool = (!isWeekend && dayIdx >= 0 && dayIdx <= 4) ? getWeekdaySchool(dayIdx) : "";
+      const effectiveSchool = (!outsideCourse && cfgSchool && cfgSchool !== "libre") ? cfgSchool : "";
+      const dayMarks = !isWeekend ? getDayMarks(dateStr) : [];
 
       const isNoLectivo = !!(state.holidays && state.holidays[dateStr]) ||
         (state.calendarEvents[dateStr] && (state.calendarEvents[dateStr].type === "no_lectivo" || state.calendarEvents[dateStr].type === "festivo" || state.calendarEvents[dateStr].classesHeld === false));
       const calEv = state.calendarEvents[dateStr];
       const hasSpecialEvent = !!(calEv && calEv.type === "evento");
       const suspendedList = (calEv && Array.isArray(calEv.suspendedGroups)) ? calEv.suspendedGroups : [];
-      const dayMarks = !isWeekend ? getDayMarks(dateStr) : [];
+      const weekObj = (wIdx !== -1) ? state.weeks[wIdx] : null;
+      const isWeekVacaciones = !!(weekObj && weekObj.tipo_sem === "Vacaciones");
 
       const card = document.createElement("div");
       card.className = "cal-day-card" +
-        (daySchool && !isWeekend ? ` school-${daySchool}` : "") +
+        (effectiveSchool ? ` school-themed school-${effectiveSchool}` : (!isWeekend && !outsideCourse ? " school-planificacion" : "")) +
+        (outsideCourse && !isWeekend ? " outside-course" : "") +
         (isWeekend ? " weekend" : "") +
-        (isNoLectivo && !isWeekend ? " is-no-lectivo" : "") +
-        (hasSpecialEvent && !isNoLectivo ? " has-special-event" : "") +
+        (isNoLectivo && !isWeekend && !outsideCourse ? " is-no-lectivo" : "") +
+        (hasSpecialEvent && !isNoLectivo && !outsideCourse ? " has-special-event" : "") +
         (dayMarks.length > 0 && !isWeekend ? ` has-day-marks mark-${dayMarks[0].category}` : "");
+      if (effectiveSchool) card.style.cssText = getSchoolStyleAttr(effectiveSchool);
 
       let bodyHtml = `
         <div class="cal-day-top">
           <span class="cal-day-num">${d}</span>
           <div style="display:flex;align-items:center;gap:4px;">
-            ${!isWeekend && dow === 5 ? `<button type="button" class="cal-friday-mark-btn" onclick="App.openCalendarDayModal('${dateStr}')" title="Añadir hito de programación (Exámenes, Evaluación, Claustro...)">📌 Hito</button>` : ""}
+            ${!isWeekend && (!groups || groups.length === 0) ? `<button type="button" class="cal-friday-mark-btn" onclick="App.openCalendarDayModal('${dateStr}')" title="Añadir hito de programación (Reunión, Claustro, Curso...)">📌 Hito</button>` : ""}
             ${wIdx !== -1 ? `<button type="button" class="cal-week-tag" onclick="App.selectWeek(${wIdx});App.switchPlannerView('semanal');" title="Abrir Semana ${wIdx + 1} en vista Semanal">Sem. ${wIdx + 1}</button>` : ""}
           </div>
         </div>
@@ -2504,8 +3137,10 @@
         `;
       };
 
-      if (!isWeekend && school) {
-        // Los 2 únicos botones solicitados: 1) Lectivo/No lectivo y 2) Evento / Hito
+      if (!isWeekend && outsideCourse) {
+        bodyHtml += `<span class="outside-course-pill">🏫 Sin alumnado</span>`;
+        bodyHtml += renderMarksStripHtml(dayMarks);
+      } else if (!isWeekend && school && groups.length > 0) {
         bodyHtml += `
           <div class="cal-two-actions-row">
             <button type="button" class="cal-action-btn ${isNoLectivo ? 'is-no-lectivo' : 'is-lectivo'}" onclick="App.toggleDayNoLectivo('${dateStr}')">
@@ -2525,14 +3160,28 @@
 
         bodyHtml += renderMarksStripHtml(dayMarks);
 
-        // Chips de los grupos de ese día (tachados en rojo si no tienen clase)
+        // Chips de los grupos de ese día (tachados en rojo si no tienen clase por CUALQUIER motivo)
         bodyHtml += `<div class="cal-groups-wrap">`;
         groups.forEach(g => {
-          const isSusp = isNoLectivo || (hasSpecialEvent && suspendedList.includes(g.course));
-          bodyHtml += `<span class="cal-grp-chip ${isSusp ? 'suspended' : ''}" title="${escapeHTML(g.course)} (${g.time})">${isSusp ? "🚫 " : ""}${escapeHTML(formatCourseShort(g.course))}</span>`;
+          const wSess = (weekObj && weekObj[school] && weekObj[school][g.course]) || {};
+          const sesStr = String(wSess.sesion || "").trim().toLowerCase();
+          const sessSuspended = !!(
+            wSess.sesion === "Festivo" ||
+            wSess.sesion === "No Clase" ||
+            wSess.sesion === "Salida / Convivencia" ||
+            sesStr.includes("no clase") ||
+            sesStr.includes("sin clase") ||
+            sesStr.includes("festivo") ||
+            sesStr.includes("salida")
+          );
+          const teachStatus = (wIdx !== -1) ? getGroupTeachingStatus(school, g.course, wIdx) : { isLectivo: true };
+          const evSusp = hasSpecialEvent && (suspendedList.includes(g.course) || suspendedList.includes(`${school}|${g.course}`));
+          const isSusp = isNoLectivo || isWeekVacaciones || evSusp || sessSuspended || (wIdx !== -1 && !teachStatus.isLectivo);
+          const suspTitle = isSusp ? `${g.course} (${g.time}) — Sin clase${teachStatus.reason ? ': ' + teachStatus.reason : ''}` : `${g.course} (${g.time})`;
+          bodyHtml += `<span class="cal-grp-chip ${isSusp ? 'suspended' : ''}" title="${escapeHTML(suspTitle)}">${isSusp ? "🚫 " : ""}${escapeHTML(formatCourseShort(g.course))}</span>`;
         });
         bodyHtml += `</div>`;
-      } else if (dow === 5) {
+      } else if (!isWeekend) {
         bodyHtml += renderMarksStripHtml(dayMarks);
         bodyHtml += `<div style="font-size:10.5px;color:var(--text-muted);margin-top:auto;">☕ Planificación docente</div>`;
       }
@@ -2694,8 +3343,9 @@
     const grp = typeof grpOrId === "string" ? getGroupById(grpOrId) : grpOrId;
     if (!grp || !task) return false;
     if (!task.scope || task.scope === "all") return true;
-    if (task.scope === "Riba-roja") return grp.center === "Riba-roja";
-    if (task.scope === "Manises") return grp.center === "Manises";
+    if (task.scope === "Riba-roja") return grp.school === "ribarroja" || grp.center === "Riba-roja";
+    if (task.scope === "Manises") return grp.school === "manises" || grp.center === "Manises";
+    if (task.scope === grp.school || task.scope === grp.center) return true;
     if (task.scope === "manual") return Array.isArray(task.groups) && task.groups.includes(grp.id);
     if (task.scope === grp.level) return true;
     return false;
@@ -2752,8 +3402,9 @@
   function getFilteredTareasGroups(weekIdx, isLongTerm = false) {
     const wData = ensureTareasWeekData(weekIdx);
     return ALL_GROUPS.filter(g => {
-      if (state.tareasFilter === "Riba-roja" && g.center !== "Riba-roja") return false;
-      if (state.tareasFilter === "Manises" && g.center !== "Manises") return false;
+      if (state.tareasFilter !== "all" && state.tareasFilter !== "neae" && state.tareasFilter !== "pending") {
+        if (g.school !== state.tareasFilter && g.center !== state.tareasFilter) return false;
+      }
       if (!isLongTerm && state.tareasFilter === "neae" && !hasNeaeProfile(g.id)) return false;
       if (state.tareasFilter === "pending" && !isGroupPendingInTareas(g.id, weekIdx)) return false;
       if (state.tareasHideDone && !isGroupPendingInTareas(g.id, weekIdx)) return false;
@@ -3067,14 +3718,19 @@
 
     // 1. Barra de Filtros y Acciones de Tareas Semanales
     const pendingCount = ALL_GROUPS.filter(g => isGroupPendingInTareas(g.id, weekIdx)).length;
+    const schools = getSchools();
+    const schoolFilterBtnsHtml = schools.map(s => {
+      const cnt = ALL_GROUPS.filter(g => g.school === s.id).length;
+      const isActive = (state.tareasFilter === s.id || state.tareasFilter === s.name);
+      return `<button type="button" class="filter-pill-btn ${isActive ? 'active' : ''}" onclick="App.setTareasFilter('${escapeHTML(s.id)}')">${escapeHTML(s.icon)} ${escapeHTML(s.name)} (${cnt})</button>`;
+    }).join("");
     const toolbar = document.createElement("div");
     toolbar.className = "subview-toolbar";
     toolbar.innerHTML = `
       <div class="toolbar-cluster">
         <div class="filter-pill-group" role="group" aria-label="Filtrar grupos en Tareas">
-          <button type="button" class="filter-pill-btn ${state.tareasFilter === 'all' ? 'active' : ''}" onclick="App.setTareasFilter('all')">Todos (17)</button>
-          <button type="button" class="filter-pill-btn ${state.tareasFilter === 'Riba-roja' ? 'active' : ''}" onclick="App.setTareasFilter('Riba-roja')">🔴 Riba-roja (9)</button>
-          <button type="button" class="filter-pill-btn ${state.tareasFilter === 'Manises' ? 'active' : ''}" onclick="App.setTareasFilter('Manises')">🔵 Manises (8)</button>
+          <button type="button" class="filter-pill-btn ${state.tareasFilter === 'all' ? 'active' : ''}" onclick="App.setTareasFilter('all')">Todos (${ALL_GROUPS.length})</button>
+          ${schoolFilterBtnsHtml}
           <button type="button" class="filter-pill-btn ${state.tareasFilter === 'neae' ? 'active' : ''}" onclick="App.setTareasFilter('neae')">🟣 NEAE</button>
           <button type="button" class="filter-pill-btn ${state.tareasFilter === 'pending' ? 'active' : ''}" onclick="App.setTareasFilter('pending')">⏳ Pendientes (${pendingCount})</button>
         </div>
@@ -3192,9 +3848,10 @@
     } else {
       visibleGroups.forEach(grp => {
         const tr = document.createElement("tr");
-        const badgeClass = grp.school === "ribarroja" ? "badge-ribarroja" : "badge-manises";
-        const daysLabel = grp.school === "ribarroja" ? "L/X" : "M/J";
-        const platformLabel = grp.school === "ribarroja" ? "Teams" : "Classroom";
+        const sMeta = getSchoolMeta(grp.school);
+        const sStyle = getSchoolStyleAttr(grp.school);
+        const daysLabel = sMeta.shortDays || computeSchoolShortDays(grp.school, getCourseConfig().weekdaySchools);
+        const platformLabel = sMeta.platform || "Aula Virtual";
         const neaeVal = (state.tareas.neaeProfiles && state.tareas.neaeProfiles[grp.id]) || "";
         const noteVal = wData.notes[grp.id] || "";
 
@@ -3214,7 +3871,7 @@
 
         tr.innerHTML = `
           <td class="col-center">
-            <span class="center-badge ${badgeClass}">${grp.center} (${daysLabel})</span>
+            <span class="center-badge school-themed" style="${sStyle}">${escapeHTML(sMeta.name)} (${escapeHTML(daysLabel)})</span>
           </td>
           <td class="col-group">
             <div class="group-name-header">
@@ -3377,7 +4034,7 @@
       inputEl.classList.toggle("has-content", hasTxt);
     }
     const grp = getGroupById(groupId);
-    const platformLabel = (grp && grp.school === "ribarroja") ? "Teams" : "Classroom";
+    const platformLabel = (grp && getSchoolMeta(grp.school).platform) || "Aula Virtual";
     const wrapEl = document.getElementById(`btn-wrap-unlinked-${key}`);
     if (wrapEl) {
       wrapEl.innerHTML = renderUnlinkedTaskButtonContent(groupId, taskType, platformLabel, weekIdx);
@@ -3530,15 +4187,20 @@
     wrap.className = "tareas-view-container";
 
     const pendingCount = ALL_GROUPS.filter(g => isGroupPendingInTareas(g.id, weekIdx)).length;
+    const schools = getSchools();
+    const ltSchoolFilterBtns = schools.map(s => {
+      const cnt = ALL_GROUPS.filter(g => g.school === s.id).length;
+      const isActive = (state.tareasFilter === s.id || state.tareasFilter === s.name);
+      return `<button type="button" class="filter-pill-btn ${isActive ? 'active' : ''}" onclick="App.setTareasFilter('${escapeHTML(s.id)}')">${escapeHTML(s.icon)} ${escapeHTML(s.name)} (${cnt})</button>`;
+    }).join("");
 
     const toolbar = document.createElement("div");
     toolbar.className = "subview-toolbar";
     toolbar.innerHTML = `
       <div class="toolbar-cluster">
         <div class="filter-pill-group" role="group" aria-label="Filtrar grupos en Largo Plazo">
-          <button type="button" class="filter-pill-btn ${state.tareasFilter === 'all' ? 'active' : ''}" onclick="App.setTareasFilter('all')">Todos (17)</button>
-          <button type="button" class="filter-pill-btn ${state.tareasFilter === 'Riba-roja' ? 'active' : ''}" onclick="App.setTareasFilter('Riba-roja')">🔴 Riba-roja (9)</button>
-          <button type="button" class="filter-pill-btn ${state.tareasFilter === 'Manises' ? 'active' : ''}" onclick="App.setTareasFilter('Manises')">🔵 Manises (8)</button>
+          <button type="button" class="filter-pill-btn ${state.tareasFilter === 'all' ? 'active' : ''}" onclick="App.setTareasFilter('all')">Todos (${ALL_GROUPS.length})</button>
+          ${ltSchoolFilterBtns}
           <button type="button" class="filter-pill-btn ${state.tareasFilter === 'pending' ? 'active' : ''}" onclick="App.setTareasFilter('pending')">⏳ Pendientes (${pendingCount})</button>
         </div>
 
@@ -3606,12 +4268,13 @@
       `;
     } else {
       visibleGroups.forEach(grp => {
-        const badgeClass = grp.school === "ribarroja" ? "badge-ribarroja" : "badge-manises";
-        const daysLabel = grp.school === "ribarroja" ? "L/X" : "M/J";
+        const sMeta = getSchoolMeta(grp.school);
+        const sStyle = getSchoolStyleAttr(grp.school);
+        const daysLabel = sMeta.shortDays || computeSchoolShortDays(grp.school, getCourseConfig().weekdaySchools);
 
         let cellsHtml = `
           <td class="col-center">
-            <span class="center-badge ${badgeClass}">${grp.center} (${daysLabel})</span>
+            <span class="center-badge school-themed" style="${sStyle}">${escapeHTML(sMeta.name)} (${escapeHTML(daysLabel)})</span>
           </td>
           <td class="col-group">
             <div class="group-name" style="margin-block-end:0;">${escapeHTML(grp.shortName)}</div>
@@ -3656,8 +4319,7 @@
       addNewLongTermTaskPrompt();
       return;
     }
-    const ribaGroups = ALL_GROUPS.filter(g => g.center === "Riba-roja");
-    const maniGroups = ALL_GROUPS.filter(g => g.center === "Manises");
+    const schools = getSchools();
 
     body.innerHTML = `
       <div class="form-field-group">
@@ -3670,16 +4332,17 @@
         <div class="modal-form-row-2col">
           <label style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;border:1px solid var(--border-medium);background:#f8fafc;cursor:pointer;font-weight:700;">
             <input type="radio" name="ltScopeOption" value="all" checked onchange="App.toggleLtManualGroupsBox(false)" />
-            <span>Todos los cursos (17)</span>
+            <span>Todos los cursos (${ALL_GROUPS.length})</span>
           </label>
-          <label style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;border:1px solid var(--border-medium);background:#f8fafc;cursor:pointer;font-weight:700;">
-            <input type="radio" name="ltScopeOption" value="Riba-roja" onchange="App.toggleLtManualGroupsBox(false)" />
-            <span>🔴 Riba-roja (9)</span>
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;border:1px solid var(--border-medium);background:#f8fafc;cursor:pointer;font-weight:700;">
-            <input type="radio" name="ltScopeOption" value="Manises" onchange="App.toggleLtManualGroupsBox(false)" />
-            <span>🔵 Manises (8)</span>
-          </label>
+          ${schools.map(s => {
+            const cnt = ALL_GROUPS.filter(g => g.school === s.id).length;
+            return `
+              <label style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;border:1px solid var(--border-medium);background:#f8fafc;cursor:pointer;font-weight:700;">
+                <input type="radio" name="ltScopeOption" value="${escapeHTML(s.id)}" onchange="App.toggleLtManualGroupsBox(false)" />
+                <span>${escapeHTML(s.icon)} ${escapeHTML(s.name)} (${cnt})</span>
+              </label>
+            `;
+          }).join("")}
           <label style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;border:1px solid var(--border-medium);background:#f8fafc;cursor:pointer;font-weight:700;">
             <input type="radio" name="ltScopeOption" value="manual" onchange="App.toggleLtManualGroupsBox(true)" />
             <span>Selección manual...</span>
@@ -3687,24 +4350,21 @@
         </div>
 
         <div id="lt-manual-groups-box" class="modal-form-row-2col" style="display:none; margin-top:8px; padding:10px; border:1px solid var(--border-medium); border-radius:8px; background:#f8fafc; max-block-size:210px; overflow-y:auto;">
-          <div style="display:flex;flex-direction:column;gap:5px;">
-            <span class="center-badge badge-ribarroja" style="inline-size:fit-content;margin-bottom:2px;">🔴 Riba-roja (9)</span>
-            ${ribaGroups.map(g => `
-              <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;cursor:pointer;">
-                <input type="checkbox" class="lt-manual-grp-cb" value="${g.id}" checked />
-                <span>${escapeHTML(g.shortName)}</span>
-              </label>
-            `).join("")}
-          </div>
-          <div style="display:flex;flex-direction:column;gap:5px;">
-            <span class="center-badge badge-manises" style="inline-size:fit-content;margin-bottom:2px;">🔵 Manises (8)</span>
-            ${maniGroups.map(g => `
-              <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;cursor:pointer;">
-                <input type="checkbox" class="lt-manual-grp-cb" value="${g.id}" checked />
-                <span>${escapeHTML(g.shortName)}</span>
-              </label>
-            `).join("")}
-          </div>
+          ${schools.map(s => {
+            const sGroups = ALL_GROUPS.filter(g => g.school === s.id);
+            const sStyle = getSchoolStyleAttr(s.id);
+            return `
+              <div style="display:flex;flex-direction:column;gap:5px;">
+                <span class="center-badge school-themed" style="${sStyle}inline-size:fit-content;margin-bottom:2px;">${escapeHTML(s.icon)} ${escapeHTML(s.name)} (${sGroups.length})</span>
+                ${sGroups.map(g => `
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;cursor:pointer;">
+                    <input type="checkbox" class="lt-manual-grp-cb" value="${escapeHTML(g.id)}" checked />
+                    <span>${escapeHTML(g.shortName)}</span>
+                  </label>
+                `).join("")}
+              </div>
+            `;
+          }).join("")}
         </div>
       </div>
     `;
@@ -3838,7 +4498,8 @@
     const s = ensureSessionObject(weekIdx, school, course);
     activeEditTarget = { school, course, weekIdx, prepared: !!s.preparada };
 
-    const schName = school === "ribarroja" ? "🔴 Riba-roja" : "🔵 Manises";
+    const sMeta = getSchoolMeta(school);
+    const schName = `${sMeta.icon} ${sMeta.name}`;
     document.getElementById("edit-session-modal-title").textContent = `✏️ ${formatCourseShort(course)} (${schName}) · ${state.weeks[weekIdx].num_sem} (${state.weeks[weekIdx].rango})`;
     document.getElementById("edit-f-tema").value = s.tema || "";
     document.getElementById("edit-f-sesion").value = s.sesion || "";
@@ -3951,8 +4612,7 @@
           <select id="cal-mark-scope-select" class="form-select" style="flex:0 1 185px;" aria-label="Alcance del hito en días">
             <option value="day">Solo este día (${escapeHTML(dateStr)})</option>
             <option value="week">Toda la semana (L-V)</option>
-            <option value="ribarroja_week">Solo Riba-roja (L/X)</option>
-            <option value="manises_week">Solo Manises (M/J)</option>
+            ${getSchools().map(s => `<option value="school:${escapeHTML(s.id)}">Solo ${escapeHTML(s.name)} (${escapeHTML(s.shortDays || computeSchoolShortDays(s.id, getCourseConfig().weekdaySchools))})</option>`).join("")}
           </select>
           <button type="button" class="corporate-btn primary" onclick="App.addMarkFromCalendarModal()">+ Añadir</button>
         </div>
@@ -4309,15 +4969,14 @@
           <label class="form-field-label">1. Selecciona los grupos destino (${escapeHTML(ctx.level)})</label>
           <div style="display:flex;gap:4px;flex-wrap:wrap;">
             <button type="button" class="filter-pill-btn" onclick="App.selectBankDeployGroups('all')">Todos</button>
-            <button type="button" class="filter-pill-btn" onclick="App.selectBankDeployGroups('ribarroja')">Solo Riba-roja</button>
-            <button type="button" class="filter-pill-btn" onclick="App.selectBankDeployGroups('manises')">Solo Manises</button>
+            ${getSchools().map(s => `<button type="button" class="filter-pill-btn" onclick="App.selectBankDeployGroups('${escapeHTML(s.id)}')">Solo ${escapeHTML(s.name)}</button>`).join("")}
           </div>
         </div>
         <div class="modal-form-row-2col" style="margin-top:4px;">
           ${levelGroups.map(g => `
             <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;border:1px solid var(--border-medium);background:#fff;cursor:pointer;">
-              <input type="checkbox" class="bank-deploy-grp-cb" data-school="${g.school}" value="${g.id}" checked onchange="App.updateBankDeployPreview()" />
-              <span class="header-school-badge ${g.school}">${g.center}</span>
+              <input type="checkbox" class="bank-deploy-grp-cb" data-school="${escapeHTML(g.school)}" value="${escapeHTML(g.id)}" checked onchange="App.updateBankDeployPreview()" />
+              <span class="header-school-badge school-themed" style="${getSchoolStyleAttr(g.school)}">${escapeHTML(g.center)}</span>
               <strong style="font-size:12px;">${escapeHTML(g.shortName)}</strong>
             </label>
           `).join("")}
@@ -4706,7 +5365,7 @@
         <div style="padding:10px 12px;border-radius:8px;border:1px solid var(--border-medium);background:var(--bg-subtle);display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">
           <div style="min-inline-size:0;flex:1;">
             <div style="font-size:10.5px;color:var(--text-muted);font-weight:700;">
-              ${escapeHTML(item.savedAt)} · ${escapeHTML(formatCourseShort(item.course))} (${item.school === 'ribarroja' ? 'Riba-roja' : 'Manises'}) · ${escapeHTML(item.weekLabel)}
+              ${escapeHTML(item.savedAt)} · ${escapeHTML(formatCourseShort(item.course))} (${escapeHTML(getSchoolMeta(item.school).name)}) · ${escapeHTML(item.weekLabel)}
             </div>
             <div style="font-size:12.5px;font-weight:800;margin-top:2px;">${escapeHTML(item.session.tema || "(Sin título)")}</div>
             <div style="font-size:11px;color:var(--text-secondary);white-space:pre-line;margin-top:2px;">${escapeHTML(item.session.actividades || "")}</div>
@@ -4743,10 +5402,12 @@
   }
 
   // 8. Exportar e Importar Backup JSON Unificado
-  function exportFullBackup() {
+  function exportFullBackup(filenameOverride) {
+    const yLbl = getSchoolYearFullLabel();
     const payload = {
-      app: "Programacion_Docente_Unificada_26_27",
+      app: `Programacion_Docente_Unificada_${yLbl}`,
       exportedAt: new Date().toISOString(),
+      courseConfig: getCourseConfig(),
       weeks: state.weeks,
       holidays: state.holidays,
       calendarEvents: state.calendarEvents,
@@ -4759,7 +5420,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `backup_programacion_26_27_${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = filenameOverride || `backup_curso_${yLbl}_${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     showToast("💾 Copia de seguridad JSON descargada");
@@ -4773,13 +5434,21 @@
       try {
         const data = JSON.parse(e.target.result);
         pushUndoSnapshot();
-        if (Array.isArray(data.weeks) && data.weeks.length === 44) state.weeks = data.weeks;
+        if (data.courseConfig) state.courseConfig = normalizeCourseConfig(data.courseConfig);
+        if (Array.isArray(data.weeks) && data.weeks.length >= 40) {
+          state.weeks = ensureFull12MonthWeeks(data.weeks, getSchoolYearStart());
+        }
         if (data.holidays) state.holidays = data.holidays;
         if (data.calendarEvents) state.calendarEvents = data.calendarEvents;
         if (data.dayMarks !== undefined) state.dayMarks = data.dayMarks || {};
         if (data.sessionBank) state.sessionBank = data.sessionBank;
         if (Array.isArray(data.reserveSessions)) state.reserveSessions = data.reserveSessions;
         if (data.tareas) state.tareas = data.tareas;
+        rebuildDerivedGroups();
+        const months = getSchoolMonths();
+        if (!months.some(m => m.key === state.calendarMonthKey) && months[0]) state.calendarMonthKey = months[0].key;
+        if (!months.some(m => m.key === state.matrixMonthKey) && months[0]) state.matrixMonthKey = months[0].key;
+        updateTopbarBadges();
         persistAll(false);
         renderWorkspace();
         showToast("📥 Copia de seguridad restaurada correctamente");
@@ -4827,7 +5496,14 @@
           const val = snap.val();
           if (!val || !val.lastUpdated) return;
           if (val.lastUpdated > state.lastUpdated) {
-            if (Array.isArray(val.weeks) && val.weeks.length === 44) state.weeks = val.weeks;
+            if (val.courseConfig) {
+              state.courseConfig = normalizeCourseConfig(val.courseConfig);
+              rebuildDerivedGroups();
+              updateTopbarBadges();
+            }
+            if (Array.isArray(val.weeks) && val.weeks.length >= 40) {
+              state.weeks = ensureFull12MonthWeeks(val.weeks, getSchoolYearStart());
+            }
             if (val.holidays) state.holidays = val.holidays;
             if (val.calendarEvents) state.calendarEvents = val.calendarEvents;
             if (val.dayMarks !== undefined) state.dayMarks = val.dayMarks || {};
@@ -4879,6 +5555,7 @@
         this.ignoreRemoteUntil = Date.now() + 1800;
         const ts = Date.now();
         this.plannerRef.update({
+          courseConfig: state.courseConfig,
           weeks: state.weeks,
           holidays: state.holidays,
           calendarEvents: state.calendarEvents,
@@ -4963,6 +5640,902 @@
   }
 
   // ==========================================================================
+  // MODAL 12: CONFIGURACIÓN DEL CURSO, COLEGIOS, HORARIOS Y NUEVO CURSO
+  // ==========================================================================
+
+  function regenerateWeeksDatesForYear(oldWeeks, newYearStart) {
+    const newWeeks = buildCourseWeeks(newYearStart);
+    const schools = getSchools();
+    if (Array.isArray(oldWeeks)) {
+      for (let i = 0; i < Math.min(oldWeeks.length, newWeeks.length); i++) {
+        const src = oldWeeks[i];
+        if (!src) continue;
+        if (src.tipo_sem) newWeeks[i].tipo_sem = src.tipo_sem;
+        if (src.slot_notes) newWeeks[i].slot_notes = deepClone(src.slot_notes);
+        schools.forEach(s => {
+          if (src[s.id]) newWeeks[i][s.id] = deepClone(src[s.id]);
+        });
+      }
+    }
+    return newWeeks;
+  }
+
+  function applySettingsSchoolYear(newYearRaw) {
+    const parsed = parseInt(newYearRaw, 10);
+    if (!Number.isFinite(parsed) || parsed < 2000 || parsed > 2150) {
+      showToast("⚠️ Introduce un año escolar válido (ej. 2026)");
+      return;
+    }
+    const cfg = getCourseConfig();
+    const prevYear = cfg.schoolYearStart;
+    if (parsed === prevYear) return;
+
+    pushUndoSnapshot();
+    const delta = parsed - prevYear;
+    cfg.schoolYearStart = parsed;
+    if (cfg.classesStartDate && /^\d{4}-\d{2}-\d{2}$/.test(cfg.classesStartDate)) {
+      const sy = parseInt(cfg.classesStartDate.slice(0, 4), 10) + delta;
+      cfg.classesStartDate = `${sy}${cfg.classesStartDate.slice(4)}`;
+    } else {
+      cfg.classesStartDate = `${parsed}-09-01`;
+    }
+    if (cfg.classesEndDate && /^\d{4}-\d{2}-\d{2}$/.test(cfg.classesEndDate)) {
+      const ey = parseInt(cfg.classesEndDate.slice(0, 4), 10) + delta;
+      cfg.classesEndDate = `${ey}${cfg.classesEndDate.slice(4)}`;
+    } else {
+      cfg.classesEndDate = `${parsed + 1}-07-02`;
+    }
+
+    state.weeks = regenerateWeeksDatesForYear(state.weeks, parsed);
+    state.currentWeekIndex = Math.max(0, Math.min(state.currentWeekIndex, state.weeks.length - 1));
+    const months = getSchoolMonths(parsed);
+    if (!months.some(m => m.key === state.calendarMonthKey) && months[0]) state.calendarMonthKey = months[0].key;
+    if (!months.some(m => m.key === state.matrixMonthKey) && months[0]) state.matrixMonthKey = months[0].key;
+    settingsNuevoTargetYear = parsed + 1;
+
+    updateTopbarBadges();
+    persistAll(false);
+    renderWorkspace();
+    renderSettingsModalBody();
+    showToast(`📅 Calendario actualizado al curso ${getSchoolYearFullLabel(parsed)}`);
+  }
+
+  function updateSettingsCourseDates(field, val) {
+    if (!val || !/^\d{4}-\d{2}-\d{2}$/.test(val)) return;
+    pushUndoSnapshot();
+    const cfg = getCourseConfig();
+    if (field === "start") cfg.classesStartDate = val;
+    else if (field === "end") cfg.classesEndDate = val;
+    persistAll(false);
+    renderWorkspace();
+    renderSettingsModalBody();
+    showToast("📅 Fechas lectivas actualizadas");
+  }
+
+  function toggleSettingsIntensivaMonth(monthNum) {
+    pushUndoSnapshot();
+    const cfg = getCourseConfig();
+    const m = parseInt(monthNum, 10);
+    const idx = cfg.intensivaMonths.indexOf(m);
+    if (idx === -1) cfg.intensivaMonths.push(m);
+    else cfg.intensivaMonths.splice(idx, 1);
+    persistAll(false);
+    renderWorkspace();
+    renderSettingsModalBody();
+  }
+
+  function updateSettingsWeekdaySchool(dayIndex, schoolId) {
+    pushUndoSnapshot();
+    const cfg = getCourseConfig();
+    const d = parseInt(dayIndex, 10);
+    if (d < 0 || d > 4) return;
+    cfg.weekdaySchools[d] = schoolId || "libre";
+    cfg.schools.forEach(s => {
+      s.shortDays = computeSchoolShortDays(s.id, cfg.weekdaySchools);
+    });
+    persistAll(false);
+    renderWorkspace();
+    renderSettingsModalBody();
+    showToast("🏫 Asignación de días actualizada");
+  }
+
+  function saveSettingsSchoolMeta(schoolId) {
+    const cfg = getCourseConfig();
+    const s = cfg.schools.find(x => x.id === schoolId);
+    if (!s) return;
+    const nameInput = document.getElementById(`sch-edit-name-${schoolId}`);
+    const iconInput = document.getElementById(`sch-edit-icon-${schoolId}`);
+    const platInput = document.getElementById(`sch-edit-plat-${schoolId}`);
+    const nextName = (nameInput && nameInput.value.trim()) || s.name;
+    const nextIcon = (iconInput && iconInput.value.trim()) || "🏫";
+    const nextPlat = (platInput && platInput.value.trim()) || "Aula Virtual";
+
+    pushUndoSnapshot();
+    s.name = nextName;
+    s.icon = nextIcon;
+    s.platform = nextPlat;
+    rebuildDerivedGroups();
+    persistAll(false);
+    renderWorkspace();
+    renderSettingsModalBody();
+    showToast(`🏫 Centro "${nextName}" actualizado`);
+  }
+
+  function setSettingsSchoolColor(schoolId, themeKey) {
+    if (!SCHOOL_COLOR_THEMES[themeKey]) return;
+    pushUndoSnapshot();
+    const cfg = getCourseConfig();
+    const s = cfg.schools.find(x => x.id === schoolId);
+    if (!s) return;
+    s.colorTheme = themeKey;
+    persistAll(false);
+    renderWorkspace();
+    renderSettingsModalBody();
+  }
+
+  function addSettingsNewSchool() {
+    const nameEl = document.getElementById("new-sch-name");
+    const iconEl = document.getElementById("new-sch-icon");
+    const platEl = document.getElementById("new-sch-plat");
+    const colorEl = document.getElementById("new-sch-color");
+    const inheritEl = document.getElementById("new-sch-inherit");
+
+    const name = (nameEl && nameEl.value.trim()) || "";
+    if (!name) {
+      showToast("⚠️ Escribe el nombre del nuevo colegio");
+      nameEl?.focus();
+      return;
+    }
+
+    const cfg = getCourseConfig();
+    let baseId = slugifyKey(name);
+    let uniqueId = baseId;
+    let c = 2;
+    while (cfg.schools.some(x => x.id === uniqueId) || uniqueId === "libre") {
+      uniqueId = `${baseId}_${c++}`;
+    }
+
+    const icon = (iconEl && iconEl.value.trim()) || "🏫";
+    const platform = (platEl && platEl.value.trim()) || "Aula Virtual";
+    const colorTheme = (colorEl && SCHOOL_COLOR_THEMES[colorEl.value]) ? colorEl.value : "verde";
+    const inheritFrom = (inheritEl && inheritEl.value) || "";
+
+    pushUndoSnapshot();
+    const newSch = {
+      id: uniqueId,
+      name,
+      icon,
+      colorTheme,
+      platform,
+      shortDays: "Sin días"
+    };
+    cfg.schools.push(newSch);
+
+    if (inheritFrom && cfg.schedules[inheritFrom]) {
+      cfg.schedules[uniqueId] = deepClone(cfg.schedules[inheritFrom]);
+    } else {
+      cfg.schedules[uniqueId] = {
+        ordinaria: { 0: [], 1: [], 2: [], 3: [], 4: [] },
+        intensiva: { 0: [], 1: [], 2: [], 3: [], 4: [] }
+      };
+    }
+
+    state.weeks.forEach(w => { if (!w[uniqueId]) w[uniqueId] = {}; });
+    settingsHorariosSchoolId = uniqueId;
+    rebuildDerivedGroups();
+    for (let w = 0; w < state.weeks.length; w++) {
+      ALL_GROUPS.filter(g => g.school === uniqueId).forEach(g => ensureSessionObject(w, uniqueId, g.course));
+    }
+    persistAll(false);
+    renderWorkspace();
+    renderSettingsModalBody();
+    showToast(`🏫 Colegio "${name}" añadido`);
+  }
+
+  function deleteSettingsSchool(schoolId) {
+    const cfg = getCourseConfig();
+    if (cfg.schools.length <= 1) {
+      showToast("⚠️ Debe quedar al menos un colegio configurado");
+      return;
+    }
+    const target = cfg.schools.find(s => s.id === schoolId);
+    if (!target) return;
+    if (!confirm(`¿Quitar el colegio "${target.name}" de la configuración?\n(Los días que tenía asignados pasarán a "Planificación libre".)`)) {
+      return;
+    }
+
+    pushUndoSnapshot();
+    cfg.schools = cfg.schools.filter(s => s.id !== schoolId);
+    cfg.weekdaySchools = cfg.weekdaySchools.map(v => v === schoolId ? "libre" : v);
+    cfg.schools.forEach(s => { s.shortDays = computeSchoolShortDays(s.id, cfg.weekdaySchools); });
+    delete cfg.schedules[schoolId];
+
+    if (settingsHorariosSchoolId === schoolId && cfg.schools[0]) {
+      settingsHorariosSchoolId = cfg.schools[0].id;
+    }
+    if (state.matrixSchoolFilter === schoolId) state.matrixSchoolFilter = "ambos";
+    if (state.tareasFilter === schoolId || state.tareasFilter === target.name) state.tareasFilter = "all";
+
+    rebuildDerivedGroups();
+    persistAll(false);
+    renderWorkspace();
+    renderSettingsModalBody();
+    showToast(`🗑️ Colegio "${target.name}" eliminado`);
+  }
+
+  function getActiveHorariosSlots() {
+    const cfg = getCourseConfig();
+    if (!cfg.schools.some(s => s.id === settingsHorariosSchoolId) && cfg.schools[0]) {
+      settingsHorariosSchoolId = cfg.schools[0].id;
+    }
+    const sch = cfg.schedules[settingsHorariosSchoolId] || (cfg.schedules[settingsHorariosSchoolId] = { ordinaria: {}, intensiva: {} });
+    if (!sch[settingsHorariosMode]) sch[settingsHorariosMode] = {};
+    if (!Array.isArray(sch[settingsHorariosMode][settingsHorariosDay])) {
+      sch[settingsHorariosMode][settingsHorariosDay] = [];
+    }
+    return sch[settingsHorariosMode][settingsHorariosDay];
+  }
+
+  function sortSlotsChronologically(slots) {
+    slots.sort((a, b) => parseSlotTimeRange(a.time).startMin - parseSlotTimeRange(b.time).startMin);
+  }
+
+  function updateSettingsSlot(slotIdx, field, value) {
+    const slots = getActiveHorariosSlots();
+    const slot = slots[slotIdx];
+    if (!slot) return;
+    pushUndoSnapshot();
+
+    const parts = (slot.time || "09:00 - 09:55").split(" - ");
+    const curStart = (parts[0] || "09:00").trim();
+    const curEnd = (parts[1] || "09:55").trim();
+
+    if (field === "start") {
+      slot.time = `${value || "09:00"} - ${curEnd}`;
+      sortSlotsChronologically(slots);
+    } else if (field === "end") {
+      slot.time = `${curStart} - ${value || "09:55"}`;
+    } else if (field === "type") {
+      slot.type = value;
+      if (value === "class") {
+        if (!slot.course) slot.course = slot.label || "1º ESO - A";
+        delete slot.label;
+      } else {
+        if (!slot.label) slot.label = slot.course || (value === "break" ? "PATIO" : "GUÀRDIA");
+        delete slot.course;
+      }
+    } else if (field === "text") {
+      if (slot.type === "class") slot.course = value;
+      else slot.label = value;
+    }
+
+    rebuildDerivedGroups();
+    if (slot.type === "class" && slot.course) {
+      for (let w = 0; w < state.weeks.length; w++) {
+        ensureSessionObject(w, settingsHorariosSchoolId, slot.course);
+      }
+    }
+    persistAll(false);
+    renderWorkspace();
+    if (field === "type" || field === "start") renderSettingsModalBody();
+  }
+
+  function addSettingsSlotPreset(presetType, presetLabel) {
+    const slots = getActiveHorariosSlots();
+    pushUndoSnapshot();
+    let nextStart = 480;
+    if (slots.length > 0) {
+      nextStart = parseSlotTimeRange(slots[slots.length - 1].time).endMin;
+    }
+    const dur = presetType === "break" ? 25 : (presetLabel && presetLabel.includes("LECTURA") ? 15 : 55);
+    const timeStr = `${minutesToHHMM(nextStart)} - ${minutesToHHMM(nextStart + dur)}`;
+    if (presetType === "class") {
+      slots.push({ time: timeStr, type: "class", course: presetLabel || "1º ESO - A" });
+    } else {
+      slots.push({ time: timeStr, type: presetType, label: presetLabel || "ACTIVIDAD" });
+    }
+    sortSlotsChronologically(slots);
+    rebuildDerivedGroups();
+    if (presetType === "class") {
+      for (let w = 0; w < state.weeks.length; w++) {
+        ensureSessionObject(w, settingsHorariosSchoolId, presetLabel || "1º ESO - A");
+      }
+    }
+    persistAll(false);
+    renderWorkspace();
+    renderSettingsModalBody();
+  }
+
+  function moveSettingsSlot(slotIdx, delta) {
+    const slots = getActiveHorariosSlots();
+    const target = slotIdx + delta;
+    if (target < 0 || target >= slots.length) return;
+    pushUndoSnapshot();
+    const tmp = slots[slotIdx];
+    slots[slotIdx] = slots[target];
+    slots[target] = tmp;
+    persistAll(false);
+    renderWorkspace();
+    renderSettingsModalBody();
+  }
+
+  function deleteSettingsSlot(slotIdx) {
+    const slots = getActiveHorariosSlots();
+    if (!slots[slotIdx]) return;
+    pushUndoSnapshot();
+    slots.splice(slotIdx, 1);
+    rebuildDerivedGroups();
+    persistAll(false);
+    renderWorkspace();
+    renderSettingsModalBody();
+  }
+
+  function copySettingsDayScheduleFromSource() {
+    const srcSel = document.getElementById("settings-copy-schedule-source");
+    if (!srcSel || !srcSel.value) return;
+    const [srcSchool, srcMode, srcDayStr] = srcSel.value.split("|");
+    const srcDay = parseInt(srcDayStr, 10);
+    const cfg = getCourseConfig();
+    const srcSlots = (cfg.schedules[srcSchool] && cfg.schedules[srcSchool][srcMode] && cfg.schedules[srcSchool][srcMode][srcDay]) || [];
+    if (srcSlots.length === 0) {
+      showToast("⚠️ El día de origen no tiene franjas para copiar");
+      return;
+    }
+
+    pushUndoSnapshot();
+    if (!cfg.schedules[settingsHorariosSchoolId]) cfg.schedules[settingsHorariosSchoolId] = { ordinaria: {}, intensiva: {} };
+    if (!cfg.schedules[settingsHorariosSchoolId][settingsHorariosMode]) cfg.schedules[settingsHorariosSchoolId][settingsHorariosMode] = {};
+    cfg.schedules[settingsHorariosSchoolId][settingsHorariosMode][settingsHorariosDay] = deepClone(srcSlots);
+
+    rebuildDerivedGroups();
+    srcSlots.filter(s => s.type === "class" && s.course).forEach(s => {
+      for (let w = 0; w < state.weeks.length; w++) ensureSessionObject(w, settingsHorariosSchoolId, s.course);
+    });
+    persistAll(false);
+    renderWorkspace();
+    renderSettingsModalBody();
+    showToast("📋 Estructura horaria copiada al día actual");
+  }
+
+  function clearOnlyGroupNamesInCurrentDay() {
+    const slots = getActiveHorariosSlots();
+    const hasClasses = slots.some(s => s.type === "class");
+    if (!hasClasses) {
+      showToast("ℹ️ No hay grupos en este día");
+      return;
+    }
+    pushUndoSnapshot();
+    slots.forEach(s => {
+      if (s.type === "class") {
+        s.course = "(Sin grupo)";
+      }
+    });
+    rebuildDerivedGroups();
+    persistAll(false);
+    renderWorkspace();
+    renderSettingsModalBody();
+    showToast("🧹 Nombres de grupo vaciados (se mantienen las horas, patios, lecturas y guardias)");
+  }
+
+  function promoteCourseString(course) {
+    const s = String(course || "").trim();
+    const eso = s.match(/^([1-3])º\s*ESO(.*)$/i);
+    if (eso) {
+      const nextNum = parseInt(eso[1], 10) + 1;
+      return `${nextNum}º ESO${eso[2]}`;
+    }
+    if (/^4º\s*ESO/i.test(s)) return "1º BACHILLERATO";
+    if (/^1º\s*BACH/i.test(s)) return "2º BACHILLERATO";
+    return null;
+  }
+
+  function computeNeaeRolloverPlan() {
+    const neaeMap = (state.tareas && state.tareas.neaeProfiles) || {};
+    const nonEmptyEntries = ALL_GROUPS
+      .map(g => ({ grp: g, text: (neaeMap[g.id] || "").trim() }))
+      .filter(x => x.text.length > 0);
+
+    const nextProfiles = {};
+    const rows = [];
+
+    nonEmptyEntries.forEach(({ grp, text }) => {
+      if (settingsNuevoNeaeMode === "clear") {
+        rows.push({ from: grp, to: null, text, status: "cleared", note: "Se borrará en el nuevo curso" });
+        return;
+      }
+      if (settingsNuevoNeaeMode === "keep") {
+        nextProfiles[grp.id] = text;
+        rows.push({ from: grp, to: grp, text, status: "kept", note: "Se mantiene en el mismo grupo" });
+        return;
+      }
+
+      const targetCourse = promoteCourseString(grp.course);
+      const targetGrp = targetCourse
+        ? ALL_GROUPS.find(g => g.school === grp.school && g.course.toUpperCase() === targetCourse.toUpperCase())
+        : null;
+
+      if (targetGrp) {
+        const prefix = targetCourse === "1º BACHILLERATO" && /^4º\s*ESO/i.test(grp.course)
+          ? `[Procedente de ${grp.shortName}] `
+          : "";
+        nextProfiles[targetGrp.id] = nextProfiles[targetGrp.id]
+          ? `${nextProfiles[targetGrp.id]} | ${prefix}${text}`
+          : `${prefix}${text}`;
+        rows.push({ from: grp, to: targetGrp, text, status: "promoted", note: `Promociona a ${targetGrp.shortName}` });
+      } else {
+        rows.push({
+          from: grp,
+          to: null,
+          text,
+          status: "graduated",
+          note: targetCourse ? `Sin grupo "${targetCourse}" en ${grp.center} (egresa o añadir grupo antes)` : "Egresa / Fin de etapa"
+        });
+      }
+    });
+
+    return { nonEmptyEntries, nextProfiles, rows };
+  }
+
+  function executeNewCourseRollover() {
+    const curYear = getSchoolYearStart();
+    const targetY = parseInt(settingsNuevoTargetYear, 10) || (curYear + 1);
+    const targetFull = getSchoolYearFullLabel(targetY);
+
+    if (!confirm(`¿Iniciar el NUEVO CURSO ${targetFull}?\n\n• Se conservarán: Banco de Sesiones, Columnas de Largo Plazo y Estructura de Colegios/Horarios.\n• Se borrarán: Todas las clases planificadas, Tareas semanales, Estados de largo plazo, Festivos, Eventos, Hitos y Reserva.`)) {
+      return;
+    }
+
+    if (settingsNuevoDownloadBackup) {
+      exportFullBackup(`backup_curso_${getSchoolYearFullLabel(curYear)}_${new Date().toISOString().slice(0, 10)}.json`);
+    }
+
+    pushUndoSnapshot();
+    const neaePlan = computeNeaeRolloverPlan();
+    const cfg = getCourseConfig();
+    const delta = targetY - curYear;
+    cfg.schoolYearStart = targetY;
+    if (cfg.classesStartDate && /^\d{4}-\d{2}-\d{2}$/.test(cfg.classesStartDate)) {
+      cfg.classesStartDate = `${parseInt(cfg.classesStartDate.slice(0, 4), 10) + delta}${cfg.classesStartDate.slice(4)}`;
+    } else {
+      cfg.classesStartDate = `${targetY}-09-01`;
+    }
+    if (cfg.classesEndDate && /^\d{4}-\d{2}-\d{2}$/.test(cfg.classesEndDate)) {
+      cfg.classesEndDate = `${parseInt(cfg.classesEndDate.slice(0, 4), 10) + delta}${cfg.classesEndDate.slice(4)}`;
+    } else {
+      cfg.classesEndDate = `${targetY + 1}-07-02`;
+    }
+
+    state.weeks = buildCourseWeeks(targetY);
+    state.holidays = {};
+    state.calendarEvents = {};
+    state.dayMarks = {};
+    state.reserveSessions = [];
+    state.clipboard = null;
+    state.tareas = {
+      weeksData: {},
+      neaeProfiles: neaePlan.nextProfiles,
+      longTermTasks: deepClone(state.tareas.longTermTasks || []),
+      longTermState: {}
+    };
+
+    rebuildDerivedGroups();
+    for (let w = 0; w < state.weeks.length; w++) {
+      for (const g of ALL_GROUPS) ensureSessionObject(w, g.school, g.course);
+    }
+
+    state.currentWeekIndex = 0;
+    const months = getSchoolMonths(targetY);
+    if (months[0]) {
+      state.calendarMonthKey = months[0].key;
+      state.matrixMonthKey = months[0].key;
+    }
+    settingsNuevoTargetYear = targetY + 1;
+
+    updateTopbarBadges();
+    persistAll(false);
+    closeModal("modal-course-settings");
+    renderWorkspace();
+    showToast(`🎉 ¡Curso ${targetFull} iniciado limpio!`);
+  }
+
+  function switchSettingsTab(tabId) {
+    settingsModalTab = tabId || "curso";
+    ["curso", "colegios", "horarios", "nuevo"].forEach(id => {
+      const btn = document.getElementById(`settings-tab-btn-${id}`);
+      if (btn) btn.setAttribute("aria-selected", id === settingsModalTab ? "true" : "false");
+    });
+    renderSettingsModalBody();
+  }
+
+  function openSettingsModal(initialTab) {
+    if (initialTab) settingsModalTab = initialTab;
+    const cfg = getCourseConfig();
+    if (!cfg.schools.some(s => s.id === settingsHorariosSchoolId) && cfg.schools[0]) {
+      settingsHorariosSchoolId = cfg.schools[0].id;
+    }
+    switchSettingsTab(settingsModalTab);
+    openModal("modal-course-settings");
+  }
+
+  function renderSettingsModalBody() {
+    const body = document.getElementById("settings-modal-body");
+    const hintEl = document.getElementById("settings-footer-hint");
+    if (!body) return;
+
+    const cfg = getCourseConfig();
+    const curY = cfg.schoolYearStart;
+    const months = getSchoolMonths(curY);
+
+    if (settingsModalTab === "curso") {
+      if (hintEl) hintEl.textContent = `Curso ${getSchoolYearFullLabel(curY)} · ${state.weeks.length} semanas reales (Sep ${curY} – Ago ${curY + 1})`;
+      body.innerHTML = `
+        <div id="settings-panel-curso" role="tabpanel" aria-labelledby="settings-tab-btn-curso" style="display:flex;flex-direction:column;gap:14px;">
+          <div class="settings-card">
+            <div class="settings-card-title">
+              <span>🗓️ Año Escolar (Sin límite de años)</span>
+              <span class="settings-year-pill">${getSchoolYearFullLabel(curY)} (${getSchoolYearShortLabel(curY)})</span>
+            </div>
+            <div class="settings-card-sub">
+              Cambia el curso escolar hacia adelante o atrás sin límite. Toda la vista Semanal, Replicar Clases y los 12 meses del Calendario (Septiembre a Agosto) se recalculan con los días reales de cada año.
+            </div>
+            <div class="settings-year-stepper">
+              <button type="button" class="corporate-btn" onclick="App.applySettingsSchoolYear(${curY - 1})">◀ ${curY - 1}-${curY}</button>
+              <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;">
+                <span>Año inicio:</span>
+                <input type="number" class="form-input" style="inline-size:90px;" min="2000" max="2150" value="${curY}" onchange="App.applySettingsSchoolYear(this.value)" />
+              </label>
+              <button type="button" class="corporate-btn primary" onclick="App.applySettingsSchoolYear(${curY + 1})">${curY + 1}-${curY + 2} ▶</button>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-title">🏫 Días Reales de Inicio y Fin de Clases</div>
+            <div class="settings-card-sub">
+              Los días anteriores al inicio o posteriores al final (incluyendo Julio y Agosto) aparecerán automáticamente como <strong>Sin alumnado</strong> y se saltarán al desplegar el Banco, pero seguirán permitiendo añadir <strong>📌 Hitos</strong> (reuniones, claustros o formación).
+            </div>
+            <div class="settings-grid-2">
+              <div class="form-field-group">
+                <label class="form-field-label" for="settings-start-date">Primer día con alumnado</label>
+                <input type="date" id="settings-start-date" class="form-input" value="${escapeHTML(cfg.classesStartDate)}" onchange="App.updateSettingsCourseDates('start', this.value)" />
+              </div>
+              <div class="form-field-group">
+                <label class="form-field-label" for="settings-end-date">Último día con alumnado</label>
+                <input type="date" id="settings-end-date" class="form-input" value="${escapeHTML(cfg.classesEndDate)}" onchange="App.updateSettingsCourseDates('end', this.value)" />
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-title">☀️ Meses con Jornada Intensiva</div>
+            <div class="settings-card-sub">
+              Marca los meses en los que se aplica la plantilla de horario de jornada intensiva (por defecto Septiembre y Junio).
+            </div>
+            <div class="settings-months-grid">
+              ${months.map(m => {
+                const isInt = cfg.intensivaMonths.includes(m.month);
+                return `
+                  <label class="settings-month-chip ${isInt ? 'is-intensiva' : ''}">
+                    <input type="checkbox" ${isInt ? "checked" : ""} onchange="App.toggleSettingsIntensivaMonth(${m.month})" />
+                    <span>${escapeHTML(MONTH_NAMES_TITLE[m.month])}</span>
+                  </label>
+                `;
+              }).join("")}
+            </div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    if (settingsModalTab === "colegios") {
+      if (hintEl) hintEl.textContent = `${cfg.schools.length} colegios configurados · ${ALL_GROUPS.length} grupos detectados en sus horarios`;
+      body.innerHTML = `
+        <div id="settings-panel-colegios" role="tabpanel" aria-labelledby="settings-tab-btn-colegios" style="display:flex;flex-direction:column;gap:14px;">
+          <div class="settings-card">
+            <div class="settings-card-title">📆 Días de la semana en cada Colegio (Lunes a Viernes)</div>
+            <div class="settings-card-sub">
+              Elige a qué centro acudes cada día. Se actualizarán al instante el Calendario, la vista Semanal, los filtros de Tareas y los hitos por centro.
+            </div>
+            <div class="weekday-assign-grid">
+              ${DAY_NAMES_FULL.map((dName, dIdx) => {
+                const curVal = cfg.weekdaySchools[dIdx] || "libre";
+                return `
+                  <div class="weekday-assign-cell">
+                    <label for="wk-assign-${dIdx}">${dName}</label>
+                    <select id="wk-assign-${dIdx}" class="form-select" onchange="App.updateSettingsWeekdaySchool(${dIdx}, this.value)">
+                      <option value="libre" ${curVal === 'libre' ? 'selected' : ''}>🗓️ Libre / Planif.</option>
+                      ${cfg.schools.map(s => `<option value="${escapeHTML(s.id)}" ${curVal === s.id ? 'selected' : ''}>${escapeHTML(s.icon)} ${escapeHTML(s.name)}</option>`).join("")}
+                    </select>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-title">🏫 Colegios Activos</div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              ${cfg.schools.map(s => {
+                const sStyle = getSchoolStyleAttr(s.id);
+                const cnt = ALL_GROUPS.filter(g => g.school === s.id).length;
+                return `
+                  <div class="settings-school-row" style="grid-template-columns: 1fr;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                      <div style="display:flex;align-items:center;gap:8px;">
+                        <span class="center-badge school-themed" style="${sStyle}">${escapeHTML(s.icon)} ${escapeHTML(s.name)} (${escapeHTML(s.shortDays || 'Sin días')})</span>
+                        <span style="font-size:11.5px;color:var(--text-secondary);">${cnt} grupos · Plataforma: <strong>${escapeHTML(s.platform)}</strong></span>
+                      </div>
+                      <div style="display:flex;gap:6px;">
+                        <button type="button" class="corporate-btn" onclick="App.openSettingsHorariosForSchool('${escapeHTML(s.id)}')">🕒 Horario</button>
+                        <button type="button" class="corporate-btn" style="color:var(--danger);" onclick="App.deleteSettingsSchool('${escapeHTML(s.id)}')" ${cfg.schools.length <= 1 ? 'disabled' : ''}>🗑️</button>
+                      </div>
+                    </div>
+                    <div class="settings-grid-3">
+                      <div class="form-field-group">
+                        <label class="form-field-label">Nombre</label>
+                        <input type="text" id="sch-edit-name-${escapeHTML(s.id)}" class="form-input" value="${escapeHTML(s.name)}" onchange="App.saveSettingsSchoolMeta('${escapeHTML(s.id)}')" />
+                      </div>
+                      <div class="form-field-group">
+                        <label class="form-field-label">Icono</label>
+                        <input type="text" id="sch-edit-icon-${escapeHTML(s.id)}" class="form-input" value="${escapeHTML(s.icon)}" onchange="App.saveSettingsSchoolMeta('${escapeHTML(s.id)}')" />
+                      </div>
+                      <div class="form-field-group">
+                        <label class="form-field-label">Plataforma Tareas</label>
+                        <input type="text" id="sch-edit-plat-${escapeHTML(s.id)}" class="form-input" value="${escapeHTML(s.platform)}" onchange="App.saveSettingsSchoolMeta('${escapeHTML(s.id)}')" />
+                      </div>
+                    </div>
+                    <div class="palette-swatch-row">
+                      <span style="font-size:11px;font-weight:700;color:var(--text-secondary);margin-right:4px;">Color pastel:</span>
+                      ${Object.values(SCHOOL_COLOR_THEMES).map(th => `
+                        <button type="button" class="palette-swatch-btn ${s.colorTheme === th.id ? 'active' : ''}" style="background:${th.soft};border-color:${th.main};color:${th.dark};" title="${escapeHTML(th.label)}" onclick="App.setSettingsSchoolColor('${escapeHTML(s.id)}','${th.id}')">
+                          ${s.colorTheme === th.id ? "✓" : ""}
+                        </button>
+                      `).join("")}
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-title">➕ Añadir Nuevo Colegio</div>
+            <div class="settings-grid-2">
+              <div class="form-field-group">
+                <label class="form-field-label" for="new-sch-name">Nombre del colegio</label>
+                <input type="text" id="new-sch-name" class="form-input" placeholder="Ej: IES Paterna, Colegio San José..." />
+              </div>
+              <div class="form-field-group">
+                <label class="form-field-label" for="new-sch-plat">Plataforma virtual (col. Plataformas)</label>
+                <input type="text" id="new-sch-plat" class="form-input" value="Classroom" placeholder="Teams, Classroom, Moodle, Aules..." />
+              </div>
+              <div class="form-field-group">
+                <label class="form-field-label" for="new-sch-icon">Icono / Emoji</label>
+                <input type="text" id="new-sch-icon" class="form-input" value="🟢" />
+              </div>
+              <div class="form-field-group">
+                <label class="form-field-label" for="new-sch-color">Color pastel</label>
+                <select id="new-sch-color" class="form-select">
+                  ${Object.values(SCHOOL_COLOR_THEMES).map(th => `<option value="${th.id}" ${th.id === 'verde' ? 'selected' : ''}>${escapeHTML(th.label)}</option>`).join("")}
+                </select>
+              </div>
+            </div>
+            <div class="form-field-group">
+              <label class="form-field-label" for="new-sch-inherit">📋 Heredar estructura horaria de (opcional)</label>
+              <select id="new-sch-inherit" class="form-select">
+                <option value="">(Empezar con horario vacío)</option>
+                ${cfg.schools.map(s => `<option value="${escapeHTML(s.id)}">Copiar horario base de ${escapeHTML(s.icon)} ${escapeHTML(s.name)}</option>`).join("")}
+              </select>
+            </div>
+            <div>
+              <button type="button" class="corporate-btn primary" onclick="App.addSettingsNewSchool()">+ Añadir Colegio</button>
+            </div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    if (settingsModalTab === "horarios") {
+      const slots = getActiveHorariosSlots();
+      const knownCourses = Array.from(new Set([
+        ...ALL_GROUPS.map(g => g.course),
+        "1º ESO - A", "1º ESO - B", "2º ESO - A", "2º ESO - B",
+        "3º ESO - A", "3º ESO - B", "4º ESO - A", "4º ESO - B",
+        "1º BACHILLERATO", "2º BACHILLERATO"
+      ]));
+
+      const copyOptions = [];
+      cfg.schools.forEach(s => {
+        ["ordinaria", "intensiva"].forEach(m => {
+          DAY_NAMES_SHORT.forEach((dn, dIdx) => {
+            const arr = (cfg.schedules[s.id] && cfg.schedules[s.id][m] && cfg.schedules[s.id][m][dIdx]) || [];
+            if (arr.length > 0) {
+              copyOptions.push({
+                val: `${s.id}|${m}|${dIdx}`,
+                label: `${s.icon} ${s.name} · ${m === 'ordinaria' ? 'Ordinaria' : 'Intensiva'} · ${dn} (${arr.length} franjas)`
+              });
+            }
+          });
+        });
+      });
+
+      if (hintEl) hintEl.textContent = `Cualquier cambio ajusta automáticamente las franjas y la línea roja horaria de la vista Semanal`;
+      body.innerHTML = `
+        <div id="settings-panel-horarios" role="tabpanel" aria-labelledby="settings-tab-btn-horarios" style="display:flex;flex-direction:column;gap:12px;">
+          <datalist id="settings-known-courses-dl">
+            ${knownCourses.map(c => `<option value="${escapeHTML(c)}"></option>`).join("")}
+          </datalist>
+
+          <div class="settings-card">
+            <div class="schedule-toolbar-row">
+              <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                <label style="font-size:11.5px;font-weight:800;">Centro:</label>
+                <select class="form-select" style="inline-size:auto;" onchange="App.setSettingsHorariosScope(this.value, null, null)">
+                  ${cfg.schools.map(s => `<option value="${escapeHTML(s.id)}" ${settingsHorariosSchoolId === s.id ? 'selected' : ''}>${escapeHTML(s.icon)} ${escapeHTML(s.name)}</option>`).join("")}
+                </select>
+                <div class="filter-pill-group">
+                  <button type="button" class="filter-pill-btn ${settingsHorariosMode === 'ordinaria' ? 'active' : ''}" onclick="App.setSettingsHorariosScope(null, 'ordinaria', null)">📚 Ordinaria</button>
+                  <button type="button" class="filter-pill-btn ${settingsHorariosMode === 'intensiva' ? 'active' : ''}" onclick="App.setSettingsHorariosScope(null, 'intensiva', null)">☀️ Intensiva</button>
+                </div>
+              </div>
+              <div class="filter-pill-group">
+                ${DAY_NAMES_SHORT.map((dn, idx) => {
+                  const assignedHere = cfg.weekdaySchools[idx] === settingsHorariosSchoolId;
+                  return `<button type="button" class="filter-pill-btn ${settingsHorariosDay === idx ? 'active' : ''}" onclick="App.setSettingsHorariosScope(null, null, ${idx})">${dn}${assignedHere ? ' ✓' : ''}</button>`;
+                }).join("")}
+              </div>
+            </div>
+
+            <div class="schedule-toolbar-row" style="padding-top:6px;border-top:1px dashed var(--border-medium);">
+              <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;flex:1;">
+                <select id="settings-copy-schedule-source" class="form-select" style="inline-size:min(340px,100%);">
+                  ${copyOptions.length > 0
+                    ? copyOptions.map(o => `<option value="${escapeHTML(o.val)}">📋 Copiar de: ${escapeHTML(o.label)}</option>`).join("")
+                    : `<option value="">Sin horarios disponibles para copiar</option>`}
+                </select>
+                <button type="button" class="corporate-btn" onclick="App.copySettingsDayScheduleFromSource()">Aplicar aquí</button>
+              </div>
+              <button type="button" class="corporate-btn" onclick="App.clearOnlyGroupNamesInCurrentDay()" title="Vacía solo los nombres de grupos manteniendo horas, patios, lecturas y guardias">🧹 Vaciar solo grupos</button>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-title">
+              <span>🕒 Franjas de ${escapeHTML(getSchoolMeta(settingsHorariosSchoolId).name)} · ${settingsHorariosMode === 'ordinaria' ? 'Ordinaria' : 'Intensiva'} · ${DAY_NAMES_FULL[settingsHorariosDay]}</span>
+              <span style="font-size:11px;color:var(--text-secondary);">${slots.length} franjas</span>
+            </div>
+
+            <div class="schedule-slot-list">
+              ${slots.length === 0 ? `<div style="padding:14px;text-align:center;color:var(--text-muted);font-size:12px;">Sin franjas este día. Añade una debajo o copia desde otro día/colegio arriba.</div>` : ""}
+              ${slots.map((slot, idx) => {
+                const rangeParts = (slot.time || "09:00 - 09:55").split(" - ");
+                const sTime = (rangeParts[0] || "09:00").trim();
+                const eTime = (rangeParts[1] || "09:55").trim();
+                const textVal = slot.type === "class" ? (slot.course || "") : (slot.label || "");
+                const rowTypeCls = slot.type === "break" ? "type-break" : (slot.type === "activity" ? "type-activity" : "");
+                return `
+                  <div class="schedule-slot-row ${rowTypeCls}">
+                    <input type="time" class="form-input" value="${escapeHTML(sTime)}" onchange="App.updateSettingsSlot(${idx},'start',this.value)" aria-label="Hora de inicio" />
+                    <input type="time" class="form-input" value="${escapeHTML(eTime)}" onchange="App.updateSettingsSlot(${idx},'end',this.value)" aria-label="Hora de fin" />
+                    <select class="form-select" onchange="App.updateSettingsSlot(${idx},'type',this.value)" aria-label="Tipo de franja">
+                      <option value="class" ${slot.type === 'class' ? 'selected' : ''}>🎓 Clase</option>
+                      <option value="break" ${slot.type === 'break' ? 'selected' : ''}>🥪 Recreo/Patio</option>
+                      <option value="activity" ${slot.type === 'activity' ? 'selected' : ''}>🛡️ Guardia/Lect./Reunión</option>
+                    </select>
+                    <input type="text" class="form-input" list="settings-known-courses-dl" value="${escapeHTML(textVal)}" placeholder="${slot.type === 'class' ? 'Ej: 1º ESO - A' : 'Ej: PATIO, GUÀRDIA, LECTURA...'}" onchange="App.updateSettingsSlot(${idx},'text',this.value)" aria-label="Grupo o etiqueta" />
+                    <div class="schedule-slot-actions">
+                      <button type="button" class="corporate-btn" style="padding:3px 6px;" onclick="App.moveSettingsSlot(${idx},-1)" ${idx === 0 ? 'disabled' : ''} title="Subir">⬆️</button>
+                      <button type="button" class="corporate-btn" style="padding:3px 6px;" onclick="App.moveSettingsSlot(${idx},1)" ${idx === slots.length - 1 ? 'disabled' : ''} title="Bajar">⬇️</button>
+                      <button type="button" class="corporate-btn" style="padding:3px 6px;color:var(--danger);" onclick="App.deleteSettingsSlot(${idx})" title="Eliminar franja">🗑️</button>
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+
+            <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:6px;">
+              <button type="button" class="corporate-btn primary" onclick="App.addSettingsSlotPreset('class','1º ESO - A')">+ Añadir Clase</button>
+              <button type="button" class="corporate-btn" onclick="App.addSettingsSlotPreset('break','PATIO')">+ Patio</button>
+              <button type="button" class="corporate-btn" onclick="App.addSettingsSlotPreset('activity','LECTURA')">+ Lectura</button>
+              <button type="button" class="corporate-btn" onclick="App.addSettingsSlotPreset('activity','GUÀRDIA')">+ Guardia</button>
+              <button type="button" class="corporate-btn" onclick="App.addSettingsSlotPreset('activity','REUNIÓN')">+ Reunión</button>
+              <button type="button" class="corporate-btn" onclick="App.addSettingsSlotPreset('break','COMEDOR')">+ Comedor</button>
+            </div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    const neaePlan = computeNeaeRolloverPlan();
+    const targetY = parseInt(settingsNuevoTargetYear, 10) || (curY + 1);
+    if (hintEl) hintEl.textContent = `Asistente de cambio a curso nuevo (${getSchoolYearFullLabel(targetY)})`;
+    body.innerHTML = `
+      <div id="settings-panel-nuevo" role="tabpanel" aria-labelledby="settings-tab-btn-nuevo" style="display:flex;flex-direction:column;gap:14px;">
+        <div class="settings-card">
+          <div class="settings-card-title">🎯 Curso Escolar Destino</div>
+          <div class="settings-year-stepper">
+            <button type="button" class="corporate-btn" onclick="App.setSettingsNuevoTargetYear(${targetY - 1})">◀ Anterior</button>
+            <span class="settings-year-pill">${getSchoolYearFullLabel(targetY)} (${getSchoolYearShortLabel(targetY)})</span>
+            <button type="button" class="corporate-btn" onclick="App.setSettingsNuevoTargetYear(${targetY + 1})">Siguiente ▶</button>
+          </div>
+        </div>
+
+        <div class="settings-grid-2">
+          <div class="settings-card" style="background:#f0fdf4;border-color:#bbf7d0;">
+            <div class="settings-card-title" style="color:#166534;">✅ Qué se CONSERVA</div>
+            <ul style="margin:0;padding-left:18px;font-size:12px;color:#14532d;line-height:1.55;">
+              <li><strong>Banco de Sesiones</strong> completo (todas tus unidades y sesiones).</li>
+              <li><strong>Columnas de Trabajo a Largo Plazo</strong> (con su definición, estado puesto a 0).</li>
+              <li><strong>Colegios, Días L–V y Estructura horaria</strong> (puedes heredar horarios y editar grupos después en la pestaña Horarios).</li>
+            </ul>
+          </div>
+          <div class="settings-card" style="background:#fff1f2;border-color:#fecdd3;">
+            <div class="settings-card-title" style="color:#9f1239;">🧹 Qué se REINICIA a 0</div>
+            <ul style="margin:0;padding-left:18px;font-size:12px;color:#881337;line-height:1.55;">
+              <li>Todas las <strong>clases programadas</strong> de las semanas del Planner.</li>
+              <li><strong>Tareas semanales</strong>, avisos, impresiones y estados de largo plazo.</li>
+              <li><strong>Festivos, Eventos Especiales, Hitos 📌</strong> y Cajón de Reserva.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-card-title">🟣 ¿Qué quieres hacer con los alumnos NEAE? (${neaePlan.nonEmptyEntries.length} perfiles con datos)</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <label class="neae-option-card">
+              <input type="radio" name="settingsNeaeRollover" value="promote" ${settingsNuevoNeaeMode === 'promote' ? 'checked' : ''} onchange="App.setSettingsNuevoNeaeMode('promote')" />
+              <div>
+                <div style="font-weight:800;font-size:12.5px;">🎓 Promocionar al curso siguiente (Recomendado)</div>
+                <div style="font-size:11.5px;color:var(--text-secondary);">Pasa 1º → 2º → 3º → 4º ESO → 1º BACHILLERATO conservando cada letra (A/B) y colegio.</div>
+              </div>
+            </label>
+            <label class="neae-option-card">
+              <input type="radio" name="settingsNeaeRollover" value="keep" ${settingsNuevoNeaeMode === 'keep' ? 'checked' : ''} onchange="App.setSettingsNuevoNeaeMode('keep')" />
+              <div>
+                <div style="font-weight:800;font-size:12.5px;">📌 Mantener NEAE en los mismos grupos</div>
+                <div style="font-size:11.5px;color:var(--text-secondary);">Deja exactamente las mismas anotaciones NEAE en el mismo grupo en que están hoy.</div>
+              </div>
+            </label>
+            <label class="neae-option-card">
+              <input type="radio" name="settingsNeaeRollover" value="clear" ${settingsNuevoNeaeMode === 'clear' ? 'checked' : ''} onchange="App.setSettingsNuevoNeaeMode('clear')" />
+              <div>
+                <div style="font-weight:800;font-size:12.5px;">🧹 Empezar NEAE de cero</div>
+                <div style="font-size:11.5px;color:var(--text-secondary);">Limpia todas las fichas NEAE para anotar alumnos nuevos.</div>
+              </div>
+            </label>
+          </div>
+
+          <div class="neae-preview-box">
+            <div style="font-weight:800;font-size:11px;color:var(--text-secondary);text-transform:uppercase;">Vista previa del traspaso NEAE:</div>
+            ${neaePlan.rows.length === 0 ? `<div style="color:var(--text-muted);">No hay notas NEAE escritas actualmente.</div>` : ""}
+            ${neaePlan.rows.map(r => `
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px dashed #e2e8f0;">
+                <span><strong>${escapeHTML(r.from.center)} ${escapeHTML(r.from.shortName)}</strong> <span style="color:var(--text-muted);">(${escapeHTML(r.text)})</span></span>
+                <span style="font-weight:700;color:${r.status === 'promoted' ? '#166534' : (r.status === 'cleared' || r.status === 'graduated' ? '#be123c' : '#1d4ed8')};">
+                  ${r.to ? `➜ ${escapeHTML(r.to.center)} ${escapeHTML(r.to.shortName)}` : `— ${escapeHTML(r.note)}`}
+                </span>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+
+        <div class="settings-card danger-card">
+          <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:800;cursor:pointer;color:#881337;">
+            <input type="checkbox" ${settingsNuevoDownloadBackup ? 'checked' : ''} onchange="App.setSettingsNuevoDownloadBackup(this.checked)" />
+            <span>💾 Descargar copia de seguridad automática del curso actual (${escapeHTML(getSchoolYearFullLabel(curY))}) antes de reiniciar</span>
+          </label>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:4px;">
+            <span style="font-size:11.5px;color:#9f1239;">Se generará automáticamente todo el calendario real de ${getSchoolYearFullLabel(targetY)}.</span>
+            <button type="button" class="corporate-btn" style="background:#e11d48;color:#ffffff;border-color:#be123c;font-weight:800;" onclick="App.executeNewCourseRollover()">🆕 Iniciar Nuevo Curso ${escapeHTML(getSchoolYearFullLabel(targetY))}</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // ==========================================================================
   // API PÚBLICA DE LA APLICACIÓN (window.App)
   // ==========================================================================
 
@@ -5017,10 +6590,11 @@
     setMatrixScope(sc) { state.matrixScope = sc; renderWorkspace(); },
     setMatrixMonth(mKey) { state.matrixMonthKey = mKey; renderWorkspace(); },
     stepMatrixMonth(delta) {
-      const i = SCHOOL_MONTHS.findIndex(m => m.key === state.matrixMonthKey);
+      const months = getSchoolMonths();
+      const i = months.findIndex(m => m.key === state.matrixMonthKey);
       const next = i + delta;
-      if (next >= 0 && next < SCHOOL_MONTHS.length) {
-        state.matrixMonthKey = SCHOOL_MONTHS[next].key;
+      if (next >= 0 && next < months.length) {
+        state.matrixMonthKey = months[next].key;
         renderWorkspace();
       }
     },
@@ -5048,10 +6622,11 @@
     // Calendario Escolar
     setCalendarMonth(mKey) { state.calendarMonthKey = mKey; renderWorkspace(); },
     stepCalendarMonth(delta) {
-      const i = SCHOOL_MONTHS.findIndex(m => m.key === state.calendarMonthKey);
+      const months = getSchoolMonths();
+      const i = months.findIndex(m => m.key === state.calendarMonthKey);
       const next = i + delta;
-      if (next >= 0 && next < SCHOOL_MONTHS.length) {
-        state.calendarMonthKey = SCHOOL_MONTHS[next].key;
+      if (next >= 0 && next < months.length) {
+        state.calendarMonthKey = months[next].key;
         renderWorkspace();
       }
     },
@@ -5094,6 +6669,49 @@
     deleteLongTermTask,
     toggleLongTermCheck,
     updateNeaeProfile,
+
+    // Configuración del Curso, Colegios, Horarios y Nuevo Curso
+    openSettingsModal,
+    switchSettingsTab,
+    applySettingsSchoolYear,
+    updateSettingsCourseDates,
+    toggleSettingsIntensivaMonth,
+    updateSettingsWeekdaySchool,
+    saveSettingsSchoolMeta,
+    setSettingsSchoolColor,
+    addSettingsNewSchool,
+    deleteSettingsSchool,
+    openSettingsHorariosForSchool(schoolId) {
+      settingsHorariosSchoolId = schoolId;
+      switchSettingsTab("horarios");
+    },
+    setSettingsHorariosScope(schoolId, mode, dayIdx) {
+      if (schoolId !== null && schoolId !== undefined) settingsHorariosSchoolId = schoolId;
+      if (mode !== null && mode !== undefined) settingsHorariosMode = mode;
+      if (dayIdx !== null && dayIdx !== undefined) settingsHorariosDay = dayIdx;
+      renderSettingsModalBody();
+    },
+    updateSettingsSlot,
+    addSettingsSlotPreset,
+    moveSettingsSlot,
+    deleteSettingsSlot,
+    copySettingsDayScheduleFromSource,
+    clearOnlyGroupNamesInCurrentDay,
+    setSettingsNuevoTargetYear(y) {
+      const p = parseInt(y, 10);
+      if (Number.isFinite(p) && p >= 2000 && p <= 2150) {
+        settingsNuevoTargetYear = p;
+        renderSettingsModalBody();
+      }
+    },
+    setSettingsNuevoNeaeMode(mode) {
+      settingsNuevoNeaeMode = mode;
+      renderSettingsModalBody();
+    },
+    setSettingsNuevoDownloadBackup(flag) {
+      settingsNuevoDownloadBackup = !!flag;
+    },
+    executeNewCourseRollover,
 
     // Cloud & Backups
     exportFullBackup,

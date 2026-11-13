@@ -653,6 +653,12 @@ button {
   border-inline-end: 1px solid var(--border-medium);
 }
 
+.sticky-header-cell.school-themed {
+  background: linear-gradient(180deg, var(--sch-soft, #f1f5f9) 0%, var(--sch-tint, #f8fafc) 100%);
+  border-block-start: 3.5px solid var(--sch-main, #94a3b8);
+  border-inline-end: 1px solid var(--sch-border, #e2e8f0);
+}
+
 .sticky-header-cell.ribarroja {
   background: linear-gradient(180deg, rgba(254, 226, 226, 0.75) 0%, rgba(255, 241, 242, 0.5) 100%);
   border-block-start: 3.5px solid var(--riba-main);
@@ -713,6 +719,12 @@ button {
   border-radius: var(--radius-xs);
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+.header-school-badge.school-themed {
+  background: var(--sch-soft, #f1f5f9);
+  color: var(--sch-dark, #334155);
+  border: 1px solid var(--sch-border, #cbd5e1);
 }
 
 .header-school-badge.ribarroja {
@@ -957,6 +969,11 @@ button {
   background: rgba(255, 255, 255, 0.55);
 }
 
+.day-body-column.school-themed {
+  background: linear-gradient(180deg, var(--sch-tint, rgba(248, 250, 252, 0.45)) 0%, rgba(255, 255, 255, 0.6) 100%);
+  border-inline-end: 1px solid var(--sch-border, var(--border-light));
+}
+
 .day-body-column.ribarroja {
   background: linear-gradient(180deg, rgba(254, 242, 242, 0.42) 0%, rgba(255, 250, 250, 0.6) 100%);
   border-inline-end: 1px solid rgba(254, 202, 202, 0.7);
@@ -1000,6 +1017,18 @@ button {
 .session-card:hover {
   box-shadow: var(--shadow-md);
   z-index: 10;
+}
+
+.session-card.school-themed {
+  background: #ffffff;
+  border: 1px solid var(--sch-border, var(--border-medium));
+  border-inline-start: 4px solid var(--sch-main, #64748b);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.session-card.school-themed .card-top-bar {
+  background: linear-gradient(90deg, var(--sch-tint, #f8fafc) 0%, rgba(255, 255, 255, 0.95) 100%);
+  border-block-end: 1px solid var(--sch-border, var(--border-light));
 }
 
 .session-card.ribarroja {
@@ -1057,6 +1086,10 @@ button {
   font-weight: 800;
   color: var(--text-main);
   white-space: nowrap;
+}
+
+.session-card.school-themed .card-course-badge {
+  color: var(--sch-dark, var(--text-main));
 }
 
 .session-card.ribarroja .card-course-badge {
@@ -2125,6 +2158,13 @@ button {
   box-sizing: border-box;
 }
 
+.cal-weekday-hdr.school-themed {
+  background: var(--sch-soft, #f1f5f9);
+  color: var(--sch-dark, #334155);
+  border: 1px solid var(--sch-border, #e2e8f0);
+  border-block-start: 3.5px solid var(--sch-main, #94a3b8);
+}
+
 .cal-weekday-hdr.ribarroja {
   background: #fee2e2;
   color: #991b1b;
@@ -2155,6 +2195,15 @@ button {
   box-sizing: border-box;
 }
 
+.cal-day-card.school-themed {
+  background: var(--sch-tint, #f8fafc);
+  border-color: var(--sch-border, #e2e8f0);
+  border-block-start: 3.5px solid var(--sch-main, #94a3b8);
+}
+.cal-day-card.school-themed .cal-day-num {
+  color: var(--sch-dark, #334155);
+}
+
 .cal-day-card.school-ribarroja {
   background: #fff5f5;
   border-color: #fecaca;
@@ -2177,6 +2226,27 @@ button {
   background: #f8fafc;
   border-color: #e2e8f0;
   border-block-start: 3.5px solid #94a3b8;
+}
+
+.cal-day-card.outside-course {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  border-block-start: 3.5px solid #94a3b8;
+  opacity: 0.85;
+}
+
+.outside-course-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: #e2e8f0;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  font-size: 9.5px;
+  font-weight: 800;
+  align-self: flex-start;
 }
 
 .cal-day-card.other-month {
@@ -2676,6 +2746,12 @@ button {
   border-radius: 999px;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.center-badge.school-themed {
+  background: var(--sch-soft, #f1f5f9);
+  color: var(--sch-dark, #334155);
+  border: 1px solid var(--sch-border, #cbd5e1);
 }
 
 .badge-ribarroja {
@@ -3342,5 +3418,325 @@ dialog::backdrop {
     block-size: 28px;
     min-block-size: 28px;
     padding-inline: 6px;
+  }
+}
+
+/* ==========================================================================
+   MODAL 12: CONFIGURACIÓN DEL CURSO, COLEGIOS, HORARIOS Y NUEVO CURSO
+   ========================================================================== */
+
+.modal-settings-surface {
+  inline-size: min(980px, 96vw);
+  max-block-size: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px 0;
+  background: var(--bg-subtle);
+  border-block-end: 1px solid var(--border-medium);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.settings-tab-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  border-radius: 8px 8px 0 0;
+  transition: background-color 0.14s ease, color 0.14s ease;
+}
+
+.settings-tab-btn:hover {
+  background: rgba(148, 163, 184, 0.14);
+  color: var(--text-main);
+}
+
+.settings-tab-btn[aria-selected="true"] {
+  background: var(--bg-surface);
+  color: #1e293b;
+  font-weight: 800;
+}
+
+.settings-tab-btn[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  inset-inline: 8px;
+  inset-block-end: 0;
+  block-size: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--primary);
+}
+
+.settings-tab-btn.danger-tab[aria-selected="true"]::after {
+  background: #e11d48;
+}
+
+.settings-modal-body {
+  padding: 16px 18px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-footer-hint {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.settings-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-card.danger-card {
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+
+.settings-card-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.settings-card-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.settings-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.settings-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.settings-year-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.settings-year-pill {
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.settings-months-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.settings-month-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-medium);
+  background: var(--bg-subtle);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.settings-month-chip.is-intensiva {
+  background: #fef3c7;
+  border-color: #fbbf24;
+  color: #78350f;
+}
+
+.settings-school-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-medium);
+  background: var(--bg-subtle);
+}
+
+.palette-swatch-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.palette-swatch-btn {
+  inline-size: 26px;
+  block-size: 26px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.palette-swatch-btn.active {
+  border-color: #0f172a;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #0f172a;
+}
+
+.weekday-assign-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.weekday-assign-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-medium);
+}
+
+.weekday-assign-cell label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-secondary);
+}
+
+.schedule-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.schedule-slot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.schedule-slot-row {
+  display: grid;
+  grid-template-columns: 74px 74px 110px 1fr auto;
+  gap: 6px;
+  align-items: center;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-medium);
+}
+
+.schedule-slot-row.type-break {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.schedule-slot-row.type-activity {
+  background: #fefce8;
+  border-color: #fde047;
+}
+
+.schedule-slot-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.neae-preview-box {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  max-block-size: 170px;
+  overflow-y: auto;
+  font-size: 11.5px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.neae-option-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-medium);
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.neae-option-card:has(input:checked) {
+  border-color: var(--primary);
+  background: #eef2ff;
+}
+
+@media (max-width: 767px) {
+  .settings-grid-2,
+  .settings-grid-3,
+  .settings-months-grid,
+  .weekday-assign-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .schedule-slot-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .schedule-slot-row > *:nth-child(3),
+  .schedule-slot-row > *:nth-child(4),
+  .schedule-slot-row > *:nth-child(5) {
+    grid-column: 1 / -1;
   }
 }
