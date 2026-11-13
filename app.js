@@ -116,6 +116,8 @@
   let activeBankEditContext = null;
   let activePostponeContext = null;
   let pendingDeleteMatrixSession = null; // { school, course, weekIdx }
+  let lastWeekFranjaLayout = null;
+  let liveTimeTimer = null;
 
   // ==========================================================================
   // UTILIDADES GENERALES Y FECHAS
@@ -171,6 +173,8 @@
     const d = String(now.getDate()).padStart(2, "0");
     const todayStr = `${y}-${m}-${d}`;
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const currentMinutesExact = currentMinutes + now.getSeconds() / 60;
+    const timeLabel = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
     let currentIdx = 9;
     for (let i = 0; i < state.weeks.length; i++) {
@@ -182,7 +186,7 @@
       }
     }
     const nextIdx = Math.min(currentIdx + 1, state.weeks.length - 1);
-    return { todayStr, currentMinutes, currentIdx, nextIdx };
+    return { todayStr, currentMinutes, currentMinutesExact, timeLabel, currentIdx, nextIdx };
   }
 
   function ensureSessionObject(weekIdx, school, course) {
@@ -1066,8 +1070,107 @@
       timeLabels[numFranjas].textContent = isIntensiva ? "14:20" : "16:50";
     }
 
+    lastWeekFranjaLayout = {
+      weekIdx: state.currentWeekIndex,
+      isIntensiva,
+      franjaDefs,
+      franjaTops,
+      franjaHeights
+    };
+    updateLiveCurrentTime();
+
     wrap.scrollTop = prevScrollY;
     wrap.scrollLeft = prevScrollX;
+  }
+
+  function parseHourLabelMinutes(label) {
+    const parts = String(label || "08:00").split(":").map(Number);
+    return (parts[0] || 0) * 60 + (parts[1] || 0);
+  }
+
+  function computeWeekCurrentTimeTop(layout, exactMin) {
+    const defs = layout.franjaDefs;
+    const tops = layout.franjaTops;
+    const heights = layout.franjaHeights;
+    const endDayMin = layout.isIntensiva ? 860 : 1010; // 14:20 o 16:50
+
+    for (let i = 0; i < defs.length; i++) {
+      const sMin = parseHourLabelMinutes(defs[i].label);
+      const eMin = (i + 1 < defs.length) ? parseHourLabelMinutes(defs[i + 1].label) : endDayMin;
+      if (exactMin >= sMin && exactMin < eMin) {
+        const span = Math.max(1, eMin - sMin);
+        const prog = (exactMin - sMin) / span;
+        return tops[i] + prog * heights[i];
+      }
+    }
+
+    const lastIdx = defs.length - 1;
+    if (lastIdx >= 0 && exactMin >= endDayMin) {
+      return tops[lastIdx] + heights[lastIdx];
+    }
+    return 0;
+  }
+
+  function updateLiveCurrentTime(nowOverride) {
+    if (state.activeModule !== "planner" || state.plannerView !== "semanal") return;
+    const bodyGrid = document.querySelector(".week-view-wrapper .week-body-grid") || document.querySelector(".week-body-grid");
+    if (!bodyGrid) return;
+
+    const info = nowOverride || getNowCalendarInfo();
+    const todayStr = info.todayStr;
+    const exactMin = (info.currentMinutesExact !== undefined) ? info.currentMinutesExact : info.currentMinutes;
+    const timeLabel = info.timeLabel || `${String(Math.floor(exactMin / 60)).padStart(2, "0")}:${String(Math.floor(exactMin % 60)).padStart(2, "0")}`;
+
+    const days = getDatesForWeek(state.currentWeekIndex);
+    const hasTodayInWeek = days.some(d => d.dateStr === todayStr);
+    const isIntensiva = !!(days[0] && days[0].isIntensiva);
+    const maxMinutes = isIntensiva ? 860 : 1010;
+
+    let timeLine = document.getElementById("current-time-indicator");
+    let timeBadge = document.getElementById("time-axis-now-badge");
+    const axisCol = bodyGrid.querySelector(".time-axis-column");
+
+    const layoutReady = lastWeekFranjaLayout &&
+      lastWeekFranjaLayout.weekIdx === state.currentWeekIndex &&
+      Array.isArray(lastWeekFranjaLayout.franjaTops) &&
+      Array.isArray(lastWeekFranjaLayout.franjaHeights);
+
+    if (hasTodayInWeek && exactMin >= 480 && exactMin <= maxMinutes && layoutReady) {
+      const targetTop = Math.round(computeWeekCurrentTimeTop(lastWeekFranjaLayout, exactMin) * 10) / 10;
+
+      if (!timeLine) {
+        timeLine = document.createElement("div");
+        timeLine.id = "current-time-indicator";
+        timeLine.className = "current-time-indicator";
+        timeLine.setAttribute("aria-hidden", "true");
+        bodyGrid.appendChild(timeLine);
+      }
+      timeLine.style.display = "block";
+      timeLine.style.top = targetTop + "px";
+
+      if (axisCol) {
+        if (!timeBadge) {
+          timeBadge = document.createElement("div");
+          timeBadge.id = "time-axis-now-badge";
+          timeBadge.className = "time-axis-now-badge";
+          timeBadge.setAttribute("aria-hidden", "true");
+          axisCol.appendChild(timeBadge);
+        }
+        timeBadge.style.display = "block";
+        timeBadge.style.top = targetTop + "px";
+        timeBadge.textContent = timeLabel;
+      }
+    } else {
+      if (timeLine) timeLine.style.display = "none";
+      if (timeBadge) timeBadge.style.display = "none";
+    }
+  }
+
+  function startLiveTimeIndicator() {
+    if (liveTimeTimer) clearInterval(liveTimeTimer);
+    liveTimeTimer = setInterval(() => {
+      updateLiveCurrentTime();
+    }, 15000);
   }
 
   function renderPlannerWeeklyView(container) {
@@ -4996,6 +5099,7 @@
     exportFullBackup,
     importFullBackup,
     openCloudModal,
+    updateLiveCurrentTime,
     forceCloudPushNow() {
       CloudSync.pushAll();
       showToast("☁️ Sincronización enviada a Firebase");
@@ -5054,6 +5158,17 @@
     loadInitialState();
     updateTopbarBadges();
     renderWorkspace();
+    startLiveTimeIndicator();
     CloudSync.init();
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      updateLiveCurrentTime();
+    }
+  });
+
+  window.addEventListener("focus", () => {
+    updateLiveCurrentTime();
   });
 })();

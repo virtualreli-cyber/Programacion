@@ -903,6 +903,54 @@ button {
   z-index: 1;
 }
 
+/* Línea roja flotante de hora actual en Vista Semanal */
+.current-time-indicator {
+  position: absolute;
+  inset-inline: 52px 0;
+  block-size: 2px;
+  background: #ef4444;
+  box-shadow: 0 0 4px rgba(239, 68, 68, 0.35);
+  z-index: 15;
+  pointer-events: none;
+  transition: top 0.8s ease-in-out;
+}
+
+.current-time-indicator::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: -4px;
+  inset-block-start: -3px;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+}
+
+.time-axis-now-badge {
+  position: absolute;
+  inset-inline-start: 50%;
+  transform: translate(-50%, -50%);
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: #fee2e2;
+  border: 1.5px solid #ef4444;
+  color: #7f1d1d;
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 1.25;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 20;
+  transition: top 0.8s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .current-time-indicator,
+  .time-axis-now-badge {
+    transition: none;
+  }
+}
+
 .day-body-column {
   position: relative;
   border-inline-end: 1px solid var(--border-light);
