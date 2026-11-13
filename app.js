@@ -1409,167 +1409,116 @@
     return [];
   }
 
+  function buildWeekAxisTicks(startDayMin, endDayMin) {
+    const ticks = [];
+    const pushTick = (minutes, opts) => {
+      ticks.push({
+        minutes,
+        label: minutesToHHMM(minutes),
+        isFirst: !!(opts && opts.isFirst),
+        isEnd: !!(opts && opts.isEnd)
+      });
+    };
+
+    pushTick(startDayMin, { isFirst: true });
+
+    const firstHour = Math.ceil((startDayMin + 1) / 60) * 60;
+    for (let m = firstHour; m < endDayMin; m += 60) {
+      const last = ticks[ticks.length - 1];
+      if (!last || (m - last.minutes) >= 15) {
+        pushTick(m);
+      }
+    }
+
+    if (endDayMin > startDayMin) {
+      const last = ticks[ticks.length - 1];
+      if (last && (endDayMin - last.minutes) < 15 && !last.isFirst) {
+        ticks[ticks.length - 1] = { minutes: endDayMin, label: minutesToHHMM(endDayMin), isFirst: false, isEnd: true };
+      } else if (!last || endDayMin > last.minutes) {
+        pushTick(endDayMin, { isEnd: true });
+      }
+    }
+
+    return ticks;
+  }
+
   function computeWeekFranjaModel(days) {
-    const daySlotsList = [];
     const allItems = [];
-    let isIntensiva = !!(days[0] && days[0].isIntensiva);
+    const isIntensiva = !!(days[0] && days[0].isIntensiva);
 
     (days || []).forEach(day => {
       const slots = getDaySlotsForWeekDay(day);
-      daySlotsList.push({ day, slots });
       slots.forEach((slot, sIdx) => {
         const range = parseSlotTimeRange(slot.time);
+        if (range.endMin <= range.startMin) return;
         allItems.push({
           dayIndex: day.dayIndex,
           slotIdx: sIdx,
           slot,
-          ...range,
-          isSpan: false,
-          franja: 0,
-          spanEnd: 0,
-          subIndex: 0,
-          subTotal: 1
+          startMin: range.startMin,
+          endMin: range.endMin,
+          duration: range.duration
         });
       });
     });
 
     if (allItems.length === 0) {
-      const fallbackDefs = [
-        { index: 0, label: "09:00", startMin: 540, endMin: 595, duration: 55 },
-        { index: 1, label: "10:00", startMin: 600, endMin: 655, duration: 55 },
-        { index: 2, label: "11:00", startMin: 660, endMin: 715, duration: 55 },
-        { index: 3, label: "12:00", startMin: 720, endMin: 775, duration: 55 },
-        { index: 4, label: "13:00", startMin: 780, endMin: 840, duration: 60 }
-      ];
+      const fallbackBp = [540, 600, 660, 720, 780, 840];
+      const fallbackSegs = fallbackBp.slice(0, -1).map((s, idx) => ({
+        index: idx,
+        label: minutesToHHMM(s),
+        startMin: s,
+        endMin: fallbackBp[idx + 1],
+        duration: fallbackBp[idx + 1] - s,
+        hasClass: true,
+        hasAnySlot: true
+      }));
       return {
         isIntensiva,
-        franjaDefs: fallbackDefs,
+        breakpoints: fallbackBp,
+        segments: fallbackSegs,
+        franjaDefs: fallbackSegs,
+        axisTicks: buildWeekAxisTicks(540, 840),
         endLabel: "14:00",
         startDayMin: 540,
-        endDayMin: 840,
-        resolveItemPlacement: () => ({ franja: 0, span: 1, isSpan: false, subIndex: 0, subTotal: 1 })
+        endDayMin: 840
       };
     }
 
-    // Marcar bloques largos (>= 100m) que abarcan al menos 2 tramos cortos de otros días
-    const nonLarge = allItems.filter(it => it.duration < 100);
+    const bpSet = new Set();
     allItems.forEach(it => {
-      if (it.duration >= 100) {
-        const covered = nonLarge.filter(other => {
-          const mid = (other.startMin + other.endMin) / 2;
-          return mid > it.startMin + 5 && mid < it.endMin - 5;
-        });
-        if (covered.length >= 2) it.isSpan = true;
-      }
+      bpSet.add(it.startMin);
+      bpSet.add(it.endMin);
     });
+    const breakpoints = Array.from(bpSet).sort((a, b) => a - b);
+    const startDayMin = breakpoints[0];
+    const endDayMin = breakpoints[breakpoints.length - 1];
 
-    const regularItems = allItems.filter(it => !it.isSpan).sort((a, b) => a.startMin - b.startMin || a.dayIndex - b.dayIndex);
-    const sourceForBands = regularItems.length > 0 ? regularItems : allItems.slice().sort((a, b) => a.startMin - b.startMin);
-
-    // Construir bandas horizontales agrupando franjas equivalentes entre colegios (<= 20 min diferencia)
-    const bands = [];
-    sourceForBands.forEach(item => {
-      let targetBand = null;
-      for (const b of bands) {
-        if (Math.abs(item.startMin - b.anchorStart) <= 20) {
-          targetBand = b;
-          break;
-        }
-        // Si es un sub-bloque corto (p.ej. Recreo tras Lectura) dentro de una banda ya abierta que termina después
-        if (item.duration <= 35 && item.startMin >= b.minStart && item.endMin <= b.maxEnd + 5) {
-          targetBand = b;
-          break;
-        }
-      }
-      if (!targetBand) {
-        bands.push({
-          index: bands.length,
-          anchorStart: item.startMin,
-          minStart: item.startMin,
-          maxEnd: item.endMin,
-          items: [item]
-        });
-      } else {
-        targetBand.items.push(item);
-        targetBand.minStart = Math.min(targetBand.minStart, item.startMin);
-        targetBand.maxEnd = Math.max(targetBand.maxEnd, item.endMin);
-      }
-    });
-
-    bands.forEach((b, idx) => { b.index = idx; });
-
-    const franjaDefs = bands.map((b, idx) => ({
-      index: idx,
-      label: minutesToHHMM(b.minStart),
-      startMin: b.minStart,
-      endMin: b.maxEnd,
-      duration: Math.max(25, b.maxEnd - b.minStart)
-    }));
-
-    // Asignar sub-índice cuando en un mismo día caen 2+ tramos en la misma banda (ej. Lectura + Recreo)
-    const placementByKey = new Map();
-    bands.forEach(b => {
-      const byDay = {};
-      b.items.forEach(it => {
-        if (!byDay[it.dayIndex]) byDay[it.dayIndex] = [];
-        byDay[it.dayIndex].push(it);
+    const segments = [];
+    for (let i = 0; i < breakpoints.length - 1; i++) {
+      const sMin = breakpoints[i];
+      const eMin = breakpoints[i + 1];
+      const overlapping = allItems.filter(it => it.startMin < eMin && it.endMin > sMin);
+      segments.push({
+        index: i,
+        label: minutesToHHMM(sMin),
+        startMin: sMin,
+        endMin: eMin,
+        duration: eMin - sMin,
+        hasClass: overlapping.some(it => it.slot.type === "class"),
+        hasAnySlot: overlapping.length > 0
       });
-      Object.keys(byDay).forEach(dKey => {
-        const arr = byDay[dKey].sort((a, z) => a.startMin - z.startMin);
-        arr.forEach((it, sIdx) => {
-          placementByKey.set(`${it.dayIndex}__${it.slotIdx}`, {
-            franja: b.index,
-            span: 1,
-            endFranja: b.index,
-            isSpan: false,
-            subIndex: sIdx,
-            subTotal: arr.length
-          });
-        });
-      });
-    });
-
-    // Colocar bloques largos spanning
-    allItems.filter(it => it.isSpan).forEach(it => {
-      let startIdx = 0;
-      let endIdx = franjaDefs.length - 1;
-      for (let i = 0; i < franjaDefs.length; i++) {
-        if (franjaDefs[i].endMin > it.startMin + 10) {
-          startIdx = i;
-          break;
-        }
-      }
-      for (let i = franjaDefs.length - 1; i >= startIdx; i--) {
-        if (franjaDefs[i].startMin < it.endMin - 10) {
-          endIdx = i;
-          break;
-        }
-      }
-      placementByKey.set(`${it.dayIndex}__${it.slotIdx}`, {
-        franja: startIdx,
-        span: Math.max(1, endIdx - startIdx + 1),
-        endFranja: endIdx,
-        isSpan: true,
-        subIndex: 0,
-        subTotal: 1
-      });
-    });
-
-    const maxEndMin = Math.max(
-      ...franjaDefs.map(f => f.endMin),
-      ...allItems.map(it => it.endMin)
-    );
-    const minStartMin = franjaDefs[0] ? franjaDefs[0].startMin : 480;
+    }
 
     return {
       isIntensiva,
-      franjaDefs,
-      endLabel: minutesToHHMM(maxEndMin),
-      startDayMin: minStartMin,
-      endDayMin: maxEndMin,
-      resolveItemPlacement: (dayIndex, slotIdx) => placementByKey.get(`${dayIndex}__${slotIdx}`) || {
-        franja: 0, span: 1, endFranja: 0, isSpan: false, subIndex: 0, subTotal: 1
-      }
+      breakpoints,
+      segments,
+      franjaDefs: segments,
+      axisTicks: buildWeekAxisTicks(startDayMin, endDayMin),
+      endLabel: minutesToHHMM(endDayMin),
+      startDayMin,
+      endDayMin
     };
   }
 
@@ -1606,24 +1555,45 @@
 
     const days = getDatesForWeek(state.currentWeekIndex);
     const model = computeWeekFranjaModel(days);
-    const franjaDefs = model.franjaDefs;
-    const numFranjas = franjaDefs.length;
+    const segments = model.segments;
+    const numSegs = segments.length;
 
-    // Altura base uniforme para todas las franjas de la semana; solo crece si alguna contiene más texto del que cabe
-    const UNIFORM_FRANJA_BASE_HEIGHT = 240;
-    const franjaHeights = franjaDefs.map(() => UNIFORM_FRANJA_BASE_HEIGHT);
+    // Escala uniforme por minuto (55 min = 240 px) respetando desfases exactos entre colegios;
+    // tramos continuos largos sin clases (ej. Comedor 13:15-15:00) se compactan proporcionalmente manteniendo linealidad interna.
+    const PX_PER_MIN = 240 / 55;
+    const segHeights = segments.map(seg => Math.max(Math.round(seg.duration * PX_PER_MIN), 14));
+    for (let i = 0; i < numSegs; ) {
+      if (segments[i].hasClass) { i++; continue; }
+      let j = i;
+      let runMin = 0;
+      while (j < numSegs && !segments[j].hasClass) {
+        runMin += segments[j].duration;
+        j++;
+      }
+      if (runMin >= 60) {
+        const targetRunH = Math.max(96, Math.min(Math.round(runMin * PX_PER_MIN), 150));
+        let allocated = 0;
+        for (let k = i; k < j; k++) {
+          const isLast = (k === j - 1);
+          const h = isLast
+            ? Math.max(14, targetRunH - allocated)
+            : Math.max(14, Math.round((segments[k].duration / runMin) * targetRunH));
+          segHeights[k] = h;
+          allocated += h;
+        }
+      }
+      i = j;
+    }
+
     const allSlots = Array.from(wrap.querySelectorAll(".session-card, .static-slot-block"));
+    const slotMeasurements = [];
 
-    // Calcular necesidad vertical de cada tarjeta individual (si hay sub-bloques en el mismo día, acumular su altura mínima)
-    const subDayTotals = {};
     allSlots.forEach(el => {
-      if (el.dataset.span) return;
-      const fIdx = parseInt(el.dataset.franja, 10);
-      if (isNaN(fIdx) || fIdx < 0 || fIdx >= numFranjas) return;
-      const subTotal = parseInt(el.dataset.subTotal || "1", 10);
-      const dayIdx = el.dataset.dayIndex || "0";
+      const sMin = parseInt(el.dataset.startMin, 10);
+      const eMin = parseInt(el.dataset.endMin, 10);
+      if (isNaN(sMin) || isNaN(eMin) || eMin <= sMin) return;
 
-      let cardNeed = 40;
+      let cardNeed = 34;
       if (el.classList.contains("session-card")) {
         const topBar = el.querySelector(".card-top-bar");
         const titleRow = el.querySelector(".card-title-row");
@@ -1638,28 +1608,58 @@
         cardNeed = topH + titleH + sH + cH + mH + 18;
       } else {
         const contentEl = el.querySelector(".static-slot-textarea");
-        const sH = contentEl ? Math.max(26, contentEl.scrollHeight) : 14;
-        cardNeed = contentEl ? (20 + sH + 12) : 34;
+        const sH = contentEl ? Math.max(26, contentEl.scrollHeight) : 0;
+        cardNeed = contentEl ? (24 + sH + 14) : 30;
       }
 
-      if (subTotal > 1) {
-        const sKey = `${fIdx}__${dayIdx}`;
-        if (!subDayTotals[sKey]) subDayTotals[sKey] = 0;
-        subDayTotals[sKey] += cardNeed + 4;
-        el.dataset.ownNeed = String(cardNeed);
-        if (subDayTotals[sKey] > franjaHeights[fIdx]) {
-          franjaHeights[fIdx] = subDayTotals[sKey];
+      const segIndices = [];
+      for (let i = 0; i < numSegs; i++) {
+        if (segments[i].startMin < eMin && segments[i].endMin > sMin) {
+          segIndices.push(i);
         }
-      } else if (cardNeed > franjaHeights[fIdx]) {
-        franjaHeights[fIdx] = cardNeed;
+      }
+      if (segIndices.length > 0) {
+        slotMeasurements.push({ el, sMin, eMin, cardNeed, segIndices });
       }
     });
 
-    const franjaTops = [0];
-    for (let i = 0; i < numFranjas - 1; i++) {
-      franjaTops.push(franjaTops[i] + franjaHeights[i]);
+    // Ampliar primero bloques cortos si su texto lo necesita, y luego bloques mayores si desbordan
+    slotMeasurements.sort((a, b) => a.segIndices.length - b.segIndices.length);
+    slotMeasurements.forEach(({ cardNeed, segIndices }) => {
+      const currentH = segIndices.reduce((acc, idx) => acc + segHeights[idx], 0);
+      const deficit = Math.ceil(cardNeed + 4 - currentH);
+      if (deficit <= 0) return;
+      const baseSum = Math.max(1, currentH);
+      let distributed = 0;
+      segIndices.forEach((segIdx, pos) => {
+        const isLast = pos === segIndices.length - 1;
+        const add = isLast
+          ? (deficit - distributed)
+          : Math.round((segHeights[segIdx] / baseSum) * deficit);
+        segHeights[segIdx] += Math.max(0, add);
+        distributed += Math.max(0, add);
+      });
+    });
+
+    const segTops = [0];
+    for (let i = 0; i < numSegs; i++) {
+      segTops.push(segTops[i] + segHeights[i]);
     }
-    const totalGridHeight = franjaTops[numFranjas - 1] + franjaHeights[numFranjas - 1] + 16;
+    const totalGridHeight = (segTops[numSegs] || 0) + 16;
+
+    const timeToY = (minutes) => {
+      if (numSegs === 0) return 0;
+      if (minutes <= model.startDayMin) return 0;
+      if (minutes >= model.endDayMin) return segTops[numSegs];
+      for (let i = 0; i < numSegs; i++) {
+        const seg = segments[i];
+        if (minutes >= seg.startMin && minutes <= seg.endMin) {
+          const span = Math.max(1, seg.duration);
+          return segTops[i] + ((minutes - seg.startMin) / span) * segHeights[i];
+        }
+      }
+      return segTops[numSegs];
+    };
 
     wrap.querySelectorAll(".day-body-column").forEach(col => {
       col.style.height = totalGridHeight + "px";
@@ -1667,71 +1667,36 @@
     const axisCol = wrap.querySelector(".time-axis-column");
     if (axisCol) axisCol.style.height = totalGridHeight + "px";
 
-    // Posicionar sub-bloques ordenados dentro de su franja cuando subTotal > 1
-    const subRunningTop = {};
     allSlots.forEach(el => {
-      const fIdx = parseInt(el.dataset.franja, 10);
-      if (isNaN(fIdx) || fIdx < 0 || fIdx >= numFranjas) return;
-      const fTop = franjaTops[fIdx];
-      const fHeight = franjaHeights[fIdx];
-
-      if (el.dataset.span) {
-        const endIdx = Math.min(parseInt(el.dataset.spanEnd || String(fIdx), 10), numFranjas - 1);
-        const spanBottom = franjaTops[endIdx] + franjaHeights[endIdx];
-        el.style.top = fTop + "px";
-        el.style.height = Math.max(spanBottom - fTop - 4, 80) + "px";
-        return;
-      }
-
-      const subTotal = parseInt(el.dataset.subTotal || "1", 10);
-      const subIdx = parseInt(el.dataset.subIndex || "0", 10);
-      if (subTotal > 1) {
-        const sKey = `${fIdx}__${el.dataset.dayIndex || "0"}`;
-        if (subIdx === 0) subRunningTop[sKey] = fTop;
-        const curTop = subRunningTop[sKey] !== undefined ? subRunningTop[sKey] : fTop;
-        let h = 34;
-        if (subIdx === subTotal - 1) {
-          h = Math.max((fTop + fHeight - 4) - curTop, 34);
-        } else {
-          h = Math.max(parseInt(el.dataset.ownNeed || "34", 10), 34);
-        }
-        el.style.top = curTop + "px";
-        el.style.height = h + "px";
-        subRunningTop[sKey] = curTop + h + 4;
-      } else {
-        el.style.top = fTop + "px";
-        el.style.height = (fHeight - 4) + "px";
-      }
+      const sMin = parseInt(el.dataset.startMin, 10);
+      const eMin = parseInt(el.dataset.endMin, 10);
+      if (isNaN(sMin) || isNaN(eMin)) return;
+      const topY = Math.round(timeToY(sMin));
+      const botY = Math.round(timeToY(eMin));
+      el.style.top = topY + "px";
+      el.style.height = Math.max(botY - topY - 4, 24) + "px";
     });
 
+    const axisTicks = model.axisTicks || [];
     const hourLines = wrap.querySelectorAll(".grid-hour-line");
-    franjaDefs.forEach((f, i) => {
-      if (hourLines[i]) hourLines[i].style.top = franjaTops[i] + "px";
-    });
-    if (hourLines[numFranjas]) {
-      hourLines[numFranjas].style.top = (franjaTops[numFranjas - 1] + franjaHeights[numFranjas - 1]) + "px";
-    }
-
     const timeLabels = wrap.querySelectorAll(".time-axis-hour");
-    franjaDefs.forEach((f, i) => {
+    axisTicks.forEach((tick, i) => {
+      const y = Math.round(timeToY(tick.minutes));
+      if (hourLines[i]) hourLines[i].style.top = y + "px";
       if (timeLabels[i]) {
-        timeLabels[i].style.top = franjaTops[i] + "px";
-        timeLabels[i].textContent = f.label;
+        timeLabels[i].style.top = y + "px";
+        timeLabels[i].textContent = tick.label;
       }
     });
-    if (timeLabels[numFranjas]) {
-      timeLabels[numFranjas].style.top = (franjaTops[numFranjas - 1] + franjaHeights[numFranjas - 1]) + "px";
-      timeLabels[numFranjas].textContent = model.endLabel;
-    }
 
     lastWeekFranjaLayout = {
       weekIdx: state.currentWeekIndex,
       isIntensiva: model.isIntensiva,
       startDayMin: model.startDayMin,
       endDayMin: model.endDayMin,
-      franjaDefs,
-      franjaTops,
-      franjaHeights
+      franjaDefs: segments,
+      franjaTops: segTops.slice(0, numSegs),
+      franjaHeights: segHeights
     };
     updateLiveCurrentTime();
 
@@ -1837,8 +1802,7 @@
     const week = state.weeks[weekIdx];
     const days = getDatesForWeek(weekIdx);
     const model = computeWeekFranjaModel(days);
-    const franjaDefs = model.franjaDefs;
-    const numFranjas = franjaDefs.length;
+    const axisTicks = model.axisTicks || [];
     const { todayStr } = getNowCalendarInfo();
 
     const wrap = document.createElement("div");
@@ -1907,18 +1871,19 @@
 
     const timeAxis = document.createElement("div");
     timeAxis.className = "time-axis-column";
-    for (let i = 0; i <= numFranjas; i++) {
+    axisTicks.forEach(tick => {
       const lbl = document.createElement("div");
-      lbl.className = "time-axis-hour" + (i === 0 ? " hour-08" : "");
+      lbl.className = "time-axis-hour" + (tick.isFirst ? " hour-08" : "") + (tick.isEnd ? " hour-end" : "");
+      lbl.textContent = tick.label;
       timeAxis.appendChild(lbl);
-    }
+    });
     bodyGrid.appendChild(timeAxis);
 
-    for (let i = 0; i <= numFranjas; i++) {
+    axisTicks.forEach(() => {
       const line = document.createElement("div");
       line.className = "grid-hour-line";
       bodyGrid.appendChild(line);
-    }
+    });
 
     days.forEach(day => {
       const dayCol = document.createElement("div");
@@ -1933,14 +1898,15 @@
       if (day.outsideCourse && slots.length === 0) {
         const outsideNote = document.createElement("div");
         outsideNote.className = "static-slot-block libre";
-        outsideNote.dataset.franja = "0";
+        outsideNote.dataset.startMin = String(model.startDayMin);
+        outsideNote.dataset.endMin = String(Math.min(model.startDayMin + 55, model.endDayMin));
         outsideNote.dataset.dayIndex = String(day.dayIndex);
         outsideNote.innerHTML = `<div class="static-slot-header"><span class="slot-label">🏫 Sin alumnado</span></div><div style="font-size:11px;color:var(--text-secondary);padding:2px 4px;">Día fuera del intervalo lectivo configurado. Puedes añadir hitos con 📌 en la cabecera.</div>`;
         dayCol.appendChild(outsideNote);
       }
 
-      slots.forEach((slot, slotIdx) => {
-        const fInfo = model.resolveItemPlacement(day.dayIndex, slotIdx);
+      slots.forEach((slot) => {
+        const slotRange = parseSlotTimeRange(slot.time);
 
         if (slot.type === "class") {
           const school = day.school;
@@ -1952,14 +1918,9 @@
           const card = document.createElement("div");
           card.className = `session-card school-themed ${school}` + (!teachStatus.isLectivo ? " is-suspended-session" : "");
           if (schStyle) card.style.cssText = schStyle;
-          card.dataset.franja = String(fInfo.franja);
+          card.dataset.startMin = String(slotRange.startMin);
+          card.dataset.endMin = String(slotRange.endMin);
           card.dataset.dayIndex = String(day.dayIndex);
-          card.dataset.subIndex = String(fInfo.subIndex || 0);
-          card.dataset.subTotal = String(fInfo.subTotal || 1);
-          if (fInfo.isSpan) {
-            card.dataset.span = String(fInfo.span);
-            card.dataset.spanEnd = String(fInfo.endFranja);
-          }
 
           if (state.searchQuery) {
             const hay = `${course} ${session.tema} ${session.actividades} ${session.avisos} ${session.educamos} ${session.imprimir}`.toLowerCase();
@@ -2121,14 +2082,9 @@
           const sInfo = getSlotIcon(slot.label);
           const staticCard = document.createElement("div");
           staticCard.className = `static-slot-block ${day.school} ${sInfo.cls}`;
-          staticCard.dataset.franja = String(fInfo.franja);
+          staticCard.dataset.startMin = String(slotRange.startMin);
+          staticCard.dataset.endMin = String(slotRange.endMin);
           staticCard.dataset.dayIndex = String(day.dayIndex);
-          staticCard.dataset.subIndex = String(fInfo.subIndex || 0);
-          staticCard.dataset.subTotal = String(fInfo.subTotal || 1);
-          if (fInfo.isSpan) {
-            staticCard.dataset.span = String(fInfo.span);
-            staticCard.dataset.spanEnd = String(fInfo.endFranja);
-          }
 
           const slotKey = `${day.dayIndex}__${slot.time}`;
           const noteVal = (week.slot_notes && week.slot_notes[slotKey]) || "";

@@ -906,6 +906,12 @@ button {
   transform: translateY(2px);
 }
 
+.time-axis-hour.hour-end {
+  transform: translateY(-12px);
+  font-size: 9.5px;
+  opacity: 0.85;
+}
+
 .grid-hour-line {
   position: absolute;
   inset-inline: 52px 0;
