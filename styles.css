@@ -786,6 +786,82 @@ button {
   color: #6b21a8;
 }
 
+/* ==========================================================================
+   HITOS DE PROGRAMACIÓN DEL DÍA (EXÁMENES, EVALUACIÓN, RECUPERACIONES, CLAUSTRO)
+   ========================================================================== */
+
+.week-hdr-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-block-start: 2px;
+}
+
+.day-mark-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 800;
+  line-height: 1.25;
+  border: 1px solid transparent;
+  color: #0f172a;
+  background: #e2e8f0;
+  max-inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: filter 0.12s ease;
+}
+
+.day-mark-pill:hover {
+  filter: brightness(0.95);
+}
+
+.day-mark-pill.compact {
+  padding: 1.5px 5px;
+  font-size: 9.5px;
+  border-radius: 4px;
+}
+
+.day-mark-pill.cat-examenes {
+  background: #ffe4e6;
+  border-color: #fda4af;
+  color: #881337;
+}
+
+.day-mark-pill.cat-evaluacion {
+  background: #ffedd5;
+  border-color: #fdba74;
+  color: #9a3412;
+}
+
+.day-mark-pill.cat-recuperaciones {
+  background: #f3e8ff;
+  border-color: #d8b4fe;
+  color: #6b21a8;
+}
+
+.day-mark-pill.cat-claustro {
+  background: #ccfbf1;
+  border-color: #5eead4;
+  color: #115e59;
+}
+
+.day-mark-pill.cat-otro {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+.day-hdr-icon-btn.active-marks {
+  background: #ffedd5;
+  border-color: #fb923c;
+}
+
 /* Rejilla de Cuerpo Semanal */
 .week-body-grid {
   position: relative;
@@ -1643,6 +1719,47 @@ button {
   box-shadow: inset 0 0 0 2px var(--primary);
 }
 
+.replicate-matrix-table tbody td.matrix-td.has-day-mark {
+  background: #fffdfb;
+}
+
+.replicate-matrix-table tbody td.matrix-td.has-day-mark.mark-examenes {
+  box-shadow: inset 3px 0 0 #f43f5e;
+}
+
+.replicate-matrix-table tbody td.matrix-td.has-day-mark.mark-evaluacion {
+  box-shadow: inset 3px 0 0 #f97316;
+}
+
+.replicate-matrix-table tbody td.matrix-td.has-day-mark.mark-recuperaciones {
+  box-shadow: inset 3px 0 0 #a855f7;
+}
+
+.replicate-matrix-table tbody td.matrix-td.has-day-mark.mark-claustro {
+  box-shadow: inset 3px 0 0 #14b8a6;
+}
+
+.replicate-matrix-table tbody td.matrix-td.has-day-mark.mark-otro {
+  box-shadow: inset 3px 0 0 #64748b;
+}
+
+.replicate-matrix-table tbody td.matrix-td.is-copied-source.has-day-mark {
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+.matrix-week-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-block-start: 4px;
+}
+
+.matrix-cell-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
 .matrix-cell-card {
   display: flex;
   flex-direction: column;
@@ -2118,6 +2235,133 @@ button {
   color: #581c87;
   font-size: 10.5px;
   font-weight: 700;
+}
+
+.cal-marks-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  max-block-size: 40px;
+  overflow: hidden;
+}
+
+.cal-day-card.has-day-marks.mark-examenes {
+  box-shadow: inset -4px 0 0 #f43f5e, var(--shadow-xs);
+}
+
+.cal-day-card.has-day-marks.mark-evaluacion {
+  box-shadow: inset -4px 0 0 #f97316, var(--shadow-xs);
+}
+
+.cal-day-card.has-day-marks.mark-recuperaciones {
+  box-shadow: inset -4px 0 0 #a855f7, var(--shadow-xs);
+}
+
+.cal-day-card.has-day-marks.mark-claustro {
+  box-shadow: inset -4px 0 0 #14b8a6, var(--shadow-xs);
+}
+
+.cal-day-card.has-day-marks.mark-otro {
+  box-shadow: inset -4px 0 0 #64748b, var(--shadow-xs);
+}
+
+.cal-friday-mark-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-medium);
+  background: #ffffff;
+  color: var(--text-main);
+  font-size: 9.5px;
+  font-weight: 800;
+}
+
+.cal-friday-mark-btn:hover {
+  background: var(--bg-muted);
+}
+
+/* Modal de Día Escolar: bloque Hitos de Programación */
+.cal-modal-section-card {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 11px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-medium);
+  background: #f8fafc;
+}
+
+.cal-mark-cat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.cal-mark-cat-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-medium);
+  background: #ffffff;
+  color: var(--text-main);
+  font-size: 11px;
+  font-weight: 700;
+  transition: all 0.12s ease;
+}
+
+.cal-mark-cat-btn:hover {
+  background: var(--bg-muted);
+}
+
+.cal-mark-cat-btn.active.cat-examenes {
+  background: #ffe4e6;
+  border-color: #f43f5e;
+  color: #881337;
+}
+
+.cal-mark-cat-btn.active.cat-evaluacion {
+  background: #ffedd5;
+  border-color: #f97316;
+  color: #9a3412;
+}
+
+.cal-mark-cat-btn.active.cat-recuperaciones {
+  background: #f3e8ff;
+  border-color: #a855f7;
+  color: #6b21a8;
+}
+
+.cal-mark-cat-btn.active.cat-claustro {
+  background: #ccfbf1;
+  border-color: #14b8a6;
+  color: #115e59;
+}
+
+.cal-mark-cat-btn.active.cat-otro {
+  background: #e2e8f0;
+  border-color: #64748b;
+  color: #0f172a;
+}
+
+.cal-mark-active-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cal-mark-active-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  background: #ffffff;
+  border: 1px solid var(--border-medium);
 }
 
 .cal-groups-wrap {

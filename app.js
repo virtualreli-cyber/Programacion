@@ -51,6 +51,14 @@
   const DAY_NAMES_SHORT = ["LUN", "MAR", "MIÉ", "JUE", "VIE"];
   const MONTH_NAMES_SHORT = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
 
+  const DAY_MARK_CATEGORIES = {
+    examenes:       { id: "examenes",       icon: "📝", label: "Exámenes",       defaultTitle: "Semana de Exámenes",    short: "Exámenes" },
+    evaluacion:     { id: "evaluacion",     icon: "📊", label: "Evaluación",     defaultTitle: "Evaluación",            short: "Evaluación" },
+    recuperaciones: { id: "recuperaciones", icon: "🔁", label: "Recuperaciones", defaultTitle: "Semana Recuperaciones", short: "Recup." },
+    claustro:       { id: "claustro",       icon: "🏛️", label: "Claustro",       defaultTitle: "Claustro / Reunión",    short: "Claustro" },
+    otro:           { id: "otro",           icon: "📌", label: "Otro aviso",     defaultTitle: "Aviso importante",      short: "Aviso" }
+  };
+
   // Estado Global Reactivo
   const state = {
     activeModule: "planner",          // 'planner' | 'tareas'
@@ -83,6 +91,7 @@
     weeks: [],
     holidays: {},
     calendarEvents: {},
+    dayMarks: {},
     sessionBank: {},
     reserveSessions: [],
     tareas: {
@@ -101,6 +110,8 @@
   let activeEditTarget = null;        // { weekIdx, school, course, prepared }
   let activeConflictContext = null;
   let activeCalendarModalDate = null;
+  let activeCalMarkCategory = "";
+  let activeCalMarkCreatorArmed = false;
   let activeBankDeployContext = null;
   let activeBankEditContext = null;
   let activePostponeContext = null;
@@ -328,6 +339,160 @@
   }
 
   // ==========================================================================
+  // HITOS DE PROGRAMACIÓN DEL DÍA (EXÁMENES, EVALUACIÓN, RECUP., CLAUSTRO)
+  // ==========================================================================
+
+  function normalizeDayMarksList(raw) {
+    if (!raw) return [];
+    const list = Array.isArray(raw) ? raw : (typeof raw === "object" ? Object.values(raw) : []);
+    return list.filter(m => m && (m.title || m.category)).map(m => ({
+      id: m.id || ("dm_" + Math.random().toString(36).slice(2, 8)),
+      category: DAY_MARK_CATEGORIES[m.category] ? m.category : "otro",
+      title: String(m.title || DAY_MARK_CATEGORIES[m.category]?.defaultTitle || "Aviso").trim()
+    }));
+  }
+
+  function getDayMarks(dateStr) {
+    if (!dateStr || !state.dayMarks) return [];
+    return normalizeDayMarksList(state.dayMarks[dateStr]);
+  }
+
+  function getWeekDatesFromDateStr(dateStr) {
+    if (!dateStr || !dateStr.includes("-")) return [];
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    const dow = dt.getDay();
+    if (dow === 0 || dow === 6) return [{ dateStr, dayIndex: -1, dayName: "", dateNum: d }];
+    const monOffset = 1 - dow;
+    const out = [];
+    for (let i = 0; i < 5; i++) {
+      const cur = new Date(y, m - 1, d + monOffset + i);
+      const cy = cur.getFullYear();
+      const cm = cur.getMonth() + 1;
+      const cd = cur.getDate();
+      out.push({
+        dayIndex: i,
+        dayName: DAY_NAMES_SHORT[i],
+        dateNum: cd,
+        dateStr: `${cy}-${String(cm).padStart(2, "0")}-${String(cd).padStart(2, "0")}`
+      });
+    }
+    return out;
+  }
+
+  function getTargetDatesForMarkScope(baseDateStr, scope) {
+    if (scope === "day") return [baseDateStr];
+    const weekDays = getWeekDatesFromDateStr(baseDateStr);
+    if (weekDays.length <= 1) return [baseDateStr];
+    if (scope === "ribarroja_week") {
+      return weekDays.filter(d => d.dayIndex === 0 || d.dayIndex === 2).map(d => d.dateStr);
+    }
+    if (scope === "manises_week") {
+      return weekDays.filter(d => d.dayIndex === 1 || d.dayIndex === 3).map(d => d.dateStr);
+    }
+    return weekDays.map(d => d.dateStr); // "week" (Lun-Vie)
+  }
+
+  function getWeekMarksSummary(weekIdx) {
+    const days = getDatesForWeek(weekIdx);
+    const grouped = new Map();
+    days.forEach(day => {
+      const marks = getDayMarks(day.dateStr);
+      marks.forEach(m => {
+        const key = `${m.category}::${m.title.toLowerCase()}`;
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            category: m.category,
+            title: m.title,
+            firstDateStr: day.dateStr,
+            days: []
+          });
+        }
+        grouped.get(key).days.push({
+          dayIndex: day.dayIndex,
+          dayName: day.dayName,
+          dateNum: day.dateNum,
+          dateStr: day.dateStr
+        });
+      });
+    });
+
+    const dayLetters = ["L", "M", "X", "J", "V"];
+    return Array.from(grouped.values()).map(item => {
+      const idxList = item.days.map(d => d.dayIndex);
+      let rangeTag = "";
+      if (idxList.length === 5) {
+        rangeTag = "L-V";
+      } else if (idxList.length === 1) {
+        const d0 = item.days[0];
+        rangeTag = `${d0.dayName} ${d0.dateNum}`;
+      } else {
+        rangeTag = idxList.map(i => dayLetters[i] || "").join(",");
+      }
+      return { ...item, rangeTag };
+    });
+  }
+
+  function addDayMarkWithScope(baseDateStr, category, title, scope) {
+    const cat = DAY_MARK_CATEGORIES[category] ? category : "otro";
+    const cleanTitle = (title || "").trim() || DAY_MARK_CATEGORIES[cat].defaultTitle;
+    const dates = getTargetDatesForMarkScope(baseDateStr, scope || "day");
+
+    pushUndoSnapshot();
+    if (!state.dayMarks) state.dayMarks = {};
+    let addedCount = 0;
+
+    dates.forEach((ds, idx) => {
+      const curList = getDayMarks(ds);
+      const dup = curList.some(m => m.category === cat && m.title.toLowerCase() === cleanTitle.toLowerCase());
+      if (!dup) {
+        curList.push({
+          id: `dm_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+          category: cat,
+          title: cleanTitle
+        });
+        state.dayMarks[ds] = curList;
+        addedCount++;
+      }
+    });
+
+    persistAll(false);
+    renderWorkspace();
+    return addedCount;
+  }
+
+  function removeDayMarkFromDay(dateStr, markId) {
+    if (!state.dayMarks || !state.dayMarks[dateStr]) return;
+    pushUndoSnapshot();
+    const filtered = getDayMarks(dateStr).filter(m => m.id !== markId);
+    if (filtered.length === 0) {
+      delete state.dayMarks[dateStr];
+    } else {
+      state.dayMarks[dateStr] = filtered;
+    }
+    persistAll(false);
+    renderWorkspace();
+  }
+
+  function removeDayMarkAcrossWeek(dateStr, category, title) {
+    const weekDays = getWeekDatesFromDateStr(dateStr);
+    pushUndoSnapshot();
+    let removed = 0;
+    weekDays.forEach(d => {
+      const list = getDayMarks(d.dateStr);
+      const next = list.filter(m => !(m.category === category && m.title.toLowerCase() === (title || "").toLowerCase()));
+      if (next.length !== list.length) {
+        removed += (list.length - next.length);
+        if (next.length === 0) delete state.dayMarks[d.dateStr];
+        else state.dayMarks[d.dateStr] = next;
+      }
+    });
+    persistAll(false);
+    renderWorkspace();
+    return removed;
+  }
+
+  // ==========================================================================
   // HISTORIAL UNDO / REDO Y CAJÓN DE RESERVA (CERO PÉRDIDA DE INFORMACIÓN)
   // ==========================================================================
 
@@ -336,6 +501,7 @@
       weeks: state.weeks,
       holidays: state.holidays,
       calendarEvents: state.calendarEvents,
+      dayMarks: state.dayMarks,
       sessionBank: state.sessionBank,
       reserveSessions: state.reserveSessions,
       tareas: state.tareas
@@ -357,6 +523,7 @@
       state.weeks = parsed.weeks || state.weeks;
       state.holidays = parsed.holidays || {};
       state.calendarEvents = parsed.calendarEvents || {};
+      state.dayMarks = parsed.dayMarks || {};
       state.sessionBank = parsed.sessionBank || state.sessionBank;
       state.reserveSessions = parsed.reserveSessions || [];
       state.tareas = parsed.tareas || state.tareas;
@@ -408,6 +575,7 @@
     state.weeks = base.weeks;
     state.holidays = base.holidays || {};
     state.calendarEvents = base.calendarEvents || {};
+    state.dayMarks = base.dayMarks || {};
     state.sessionBank = base.sessionBank || {};
     state.tareas = base.tareas || { weeksData: {}, neaeProfiles: {}, longTermTasks: [], longTermState: {} };
 
@@ -419,6 +587,7 @@
         if (Array.isArray(parsed.weeks) && parsed.weeks.length === 44) state.weeks = parsed.weeks;
         if (parsed.holidays) state.holidays = parsed.holidays;
         if (parsed.calendarEvents) state.calendarEvents = parsed.calendarEvents;
+        if (parsed.dayMarks) state.dayMarks = parsed.dayMarks;
         if (parsed.sessionBank) state.sessionBank = parsed.sessionBank;
         if (Array.isArray(parsed.reserveSessions)) state.reserveSessions = parsed.reserveSessions;
         if (parsed.tareas) state.tareas = parsed.tareas;
@@ -462,6 +631,7 @@
         weeks: state.weeks,
         holidays: state.holidays,
         calendarEvents: state.calendarEvents,
+        dayMarks: state.dayMarks,
         sessionBank: state.sessionBank,
         reserveSessions: state.reserveSessions,
         tareas: state.tareas,
@@ -474,6 +644,7 @@
         weeks: state.weeks,
         holidays: state.holidays,
         calendarEvents: state.calendarEvents,
+        dayMarks: state.dayMarks,
         reserveSessions: state.reserveSessions,
         lastUpdated: state.lastUpdated
       }));
@@ -926,6 +1097,7 @@
         (state.calendarEvents[day.dateStr] && (state.calendarEvents[day.dateStr].type === "no_lectivo" || state.calendarEvents[day.dateStr].type === "festivo" || state.calendarEvents[day.dateStr].classesHeld === false));
       const calEv = state.calendarEvents[day.dateStr];
       const hasSpecialEvent = !!(calEv && calEv.type === "evento");
+      const dayMarks = getDayMarks(day.dateStr);
 
       const hCell = document.createElement("div");
       hCell.className = `sticky-header-cell ${day.school}` + (isNoLectivo ? " is-festivo" : "") + (isToday ? " is-today" : "");
@@ -941,10 +1113,19 @@
               <button type="button" class="day-hdr-icon-btn ${isNoLectivo ? 'active-festivo' : ''}" onclick="App.toggleDayNoLectivo('${day.dateStr}')" title="${isNoLectivo ? 'Día No Lectivo (clic para marcar como Lectivo)' : 'Marcar día completo como No Lectivo'}">🏖️</button>
               <button type="button" class="day-hdr-icon-btn ${hasSpecialEvent ? 'active-evento' : ''}" onclick="App.openCalendarDayModal('${day.dateStr}')" title="Configurar Evento Especial (para uno, varios o todos los grupos del día)">🎪</button>
             ` : ""}
+            <button type="button" class="day-hdr-icon-btn ${dayMarks.length > 0 ? 'active-marks' : ''}" onclick="App.openCalendarDayModal('${day.dateStr}')" title="Añadir o editar Hitos de Programación (Exámenes, Evaluación, Recup., Claustro)">📌</button>
           </div>
         </div>
         ${isNoLectivo ? `<div class="header-status-sub festivo">🏖️ ${escapeHTML((calEv && calEv.title) || 'Día No Lectivo')}</div>` : ""}
         ${!isNoLectivo && hasSpecialEvent ? `<div class="header-status-sub evento">🎪 ${escapeHTML(calEv.title || 'Evento especial')}</div>` : ""}
+        ${dayMarks.length > 0 ? `
+          <div class="week-hdr-marks">
+            ${dayMarks.map(m => {
+              const catMeta = DAY_MARK_CATEGORIES[m.category] || DAY_MARK_CATEGORIES.otro;
+              return `<button type="button" class="day-mark-pill cat-${escapeHTML(m.category)}" onclick="App.openCalendarDayModal('${day.dateStr}')" title="${escapeHTML(catMeta.label)}: ${escapeHTML(m.title)}">${catMeta.icon} ${escapeHTML(m.title)}</button>`;
+            }).join("")}
+          </div>
+        ` : ""}
       `;
       headerRow.appendChild(hCell);
     });
@@ -1675,6 +1856,15 @@
     let thHtml = `<tr><th class="sticky-group-col">GRUPO / CENTRO</th>`;
     visibleWeeks.forEach(({ week, idx }) => {
       const isCur = (idx === state.currentWeekIndex);
+      const weekMarks = getWeekMarksSummary(idx);
+      const weekMarksHtml = weekMarks.length > 0 ? `
+        <div class="matrix-week-marks">
+          ${weekMarks.map(wm => {
+            const catMeta = DAY_MARK_CATEGORIES[wm.category] || DAY_MARK_CATEGORIES.otro;
+            return `<button type="button" class="day-mark-pill compact cat-${escapeHTML(wm.category)}" onclick="App.openCalendarDayModal('${wm.firstDateStr}')" title="${escapeHTML(catMeta.label)}: ${escapeHTML(wm.title)} (${escapeHTML(wm.rangeTag)})">${catMeta.icon} ${escapeHTML(wm.title)} (${escapeHTML(wm.rangeTag)})</button>`;
+          }).join("")}
+        </div>
+      ` : "";
       thHtml += `
         <th class="${isCur ? 'is-current-week-col' : ''}">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
@@ -1689,6 +1879,7 @@
               <button type="button" class="matrix-mini-btn" style="color:var(--text-main);background:#ffffff;border:1px solid var(--border-medium);" onclick="App.selectWeek(${idx});App.switchPlannerView('semanal');" title="Abrir ${week.num_sem} en vista Semanal">📅</button>
             </div>
           </div>
+          ${weekMarksHtml}
         </th>
       `;
     });
@@ -1735,6 +1926,7 @@
           const td = document.createElement("td");
           const session = ensureSessionObject(wIdx, grp.school, grp.course);
           const teachStatus = getGroupTeachingStatus(grp.school, grp.course, wIdx);
+          const cellMarks = teachStatus.dateStr ? getDayMarks(teachStatus.dateStr) : [];
           const isSourceCopied = !!(state.clipboard &&
             state.clipboard.sourceSchool === grp.school &&
             state.clipboard.sourceCourse === grp.course &&
@@ -1742,6 +1934,7 @@
 
           td.className = "matrix-td" +
             (!teachStatus.isLectivo ? " is-suspended-td" : "") +
+            (cellMarks.length > 0 ? ` has-day-mark mark-${cellMarks[0].category}` : "") +
             (isSourceCopied ? " is-copied-source" : "");
 
           // Soporte Drag & Drop
@@ -1767,6 +1960,15 @@
             if (!hay.includes(state.searchQuery)) td.style.opacity = "0.25";
           }
 
+          const cellMarksHtml = (cellMarks.length > 0 && teachStatus.dateStr) ? `
+            <div class="matrix-cell-marks">
+              ${cellMarks.map(m => {
+                const catMeta = DAY_MARK_CATEGORIES[m.category] || DAY_MARK_CATEGORIES.otro;
+                return `<button type="button" class="day-mark-pill compact cat-${escapeHTML(m.category)}" onclick="App.openCalendarDayModal('${teachStatus.dateStr}')" title="${escapeHTML(catMeta.label)}: ${escapeHTML(m.title)}">${catMeta.icon} ${escapeHTML(m.title)}</button>`;
+              }).join("")}
+            </div>
+          ` : "";
+
           td.innerHTML = `
             <div class="matrix-cell-card">
               <div class="matrix-cell-top">
@@ -1780,6 +1982,7 @@
                   ${hasContent || session.preparada ? `<button type="button" class="matrix-mini-btn btn-delete-session" onclick="App.requestDeleteMatrixSession('${grp.school}','${grp.course}',${wIdx})" title="Eliminar sesión (🗑️)">🗑️</button>` : ""}
                 </div>
               </div>
+              ${cellMarksHtml}
 
               ${!teachStatus.isLectivo ? `
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;padding:2px 5px;border-radius:4px;background:#fef3c7;color:#92400e;font-size:9.5px;font-weight:800;">
@@ -2110,7 +2313,7 @@
         <button type="button" class="corporate-btn" onclick="App.stepCalendarMonth(1)">Mes siguiente ▶</button>
       </div>
       <div class="toolbar-cluster" style="font-size:11.5px;color:var(--text-secondary);">
-        <span>💡 Haz clic en <strong>🟢 Lectivo / 🏖️ No lectivo</strong> para cambiar el día completo, o en <strong>🎪 Evento</strong> para suspender clase en uno, varios o todos los grupos de ese día.</span>
+        <span>💡 Usa <strong>🟢 Lectivo / 🏖️ No lectivo</strong> para festivos, y <strong>🎪 Evento / 📌 Hito</strong> para añadir Exámenes, Evaluaciones, Recup. o Claustros sin suspender clase.</span>
       </div>
     `;
     wrap.appendChild(toolbar);
@@ -2166,30 +2369,47 @@
       const calEv = state.calendarEvents[dateStr];
       const hasSpecialEvent = !!(calEv && calEv.type === "evento");
       const suspendedList = (calEv && Array.isArray(calEv.suspendedGroups)) ? calEv.suspendedGroups : [];
+      const dayMarks = !isWeekend ? getDayMarks(dateStr) : [];
 
       const card = document.createElement("div");
       card.className = "cal-day-card" +
         (daySchool && !isWeekend ? ` school-${daySchool}` : "") +
         (isWeekend ? " weekend" : "") +
         (isNoLectivo && !isWeekend ? " is-no-lectivo" : "") +
-        (hasSpecialEvent && !isNoLectivo ? " has-special-event" : "");
+        (hasSpecialEvent && !isNoLectivo ? " has-special-event" : "") +
+        (dayMarks.length > 0 && !isWeekend ? ` has-day-marks mark-${dayMarks[0].category}` : "");
 
       let bodyHtml = `
         <div class="cal-day-top">
           <span class="cal-day-num">${d}</span>
-          ${wIdx !== -1 ? `<button type="button" class="cal-week-tag" onclick="App.selectWeek(${wIdx});App.switchPlannerView('semanal');" title="Abrir Semana ${wIdx + 1} en vista Semanal">Sem. ${wIdx + 1}</button>` : ""}
+          <div style="display:flex;align-items:center;gap:4px;">
+            ${!isWeekend && dow === 5 ? `<button type="button" class="cal-friday-mark-btn" onclick="App.openCalendarDayModal('${dateStr}')" title="Añadir hito de programación (Exámenes, Evaluación, Claustro...)">📌 Hito</button>` : ""}
+            ${wIdx !== -1 ? `<button type="button" class="cal-week-tag" onclick="App.selectWeek(${wIdx});App.switchPlannerView('semanal');" title="Abrir Semana ${wIdx + 1} en vista Semanal">Sem. ${wIdx + 1}</button>` : ""}
+          </div>
         </div>
       `;
 
+      const renderMarksStripHtml = (marksList) => {
+        if (!marksList || marksList.length === 0) return "";
+        return `
+          <div class="cal-marks-strip">
+            ${marksList.map(m => {
+              const catMeta = DAY_MARK_CATEGORIES[m.category] || DAY_MARK_CATEGORIES.otro;
+              return `<button type="button" class="day-mark-pill compact cat-${escapeHTML(m.category)}" onclick="App.openCalendarDayModal('${dateStr}')" title="${escapeHTML(catMeta.label)}: ${escapeHTML(m.title)}">${catMeta.icon} ${escapeHTML(m.title)}</button>`;
+            }).join("")}
+          </div>
+        `;
+      };
+
       if (!isWeekend && school) {
-        // Los 2 únicos botones solicitados: 1) Lectivo/No lectivo y 2) Evento especial
+        // Los 2 únicos botones solicitados: 1) Lectivo/No lectivo y 2) Evento / Hito
         bodyHtml += `
           <div class="cal-two-actions-row">
             <button type="button" class="cal-action-btn ${isNoLectivo ? 'is-no-lectivo' : 'is-lectivo'}" onclick="App.toggleDayNoLectivo('${dateStr}')">
               ${isNoLectivo ? "🏖️ No lectivo" : "🟢 Lectivo"}
             </button>
-            <button type="button" class="cal-action-btn ${hasSpecialEvent ? 'has-evento' : ''}" onclick="App.openCalendarDayModal('${dateStr}')">
-              🎪 Evento
+            <button type="button" class="cal-action-btn ${(hasSpecialEvent || dayMarks.length > 0) ? 'has-evento' : ''}" onclick="App.openCalendarDayModal('${dateStr}')">
+              ${dayMarks.length > 0 && !hasSpecialEvent ? `📌 Hitos (${dayMarks.length})` : "🎪 Evento / 📌"}
             </button>
           </div>
         `;
@@ -2200,6 +2420,8 @@
           bodyHtml += `<div class="cal-event-pill">🎪 ${escapeHTML(calEv.title || "Evento especial")}</div>`;
         }
 
+        bodyHtml += renderMarksStripHtml(dayMarks);
+
         // Chips de los grupos de ese día (tachados en rojo si no tienen clase)
         bodyHtml += `<div class="cal-groups-wrap">`;
         groups.forEach(g => {
@@ -2208,6 +2430,7 @@
         });
         bodyHtml += `</div>`;
       } else if (dow === 5) {
+        bodyHtml += renderMarksStripHtml(dayMarks);
         bodyHtml += `<div style="font-size:10.5px;color:var(--text-muted);margin-top:auto;">☕ Planificación docente</div>`;
       }
 
@@ -3600,9 +3823,63 @@
   }
 
   // 3. Modal Simplificado del Calendario Escolar (Solo Lectivo/No lectivo + Evento especial por grupos)
+  function renderCalendarMarksModalSection(dateStr) {
+    const dayMarks = getDayMarks(dateStr);
+    const curCat = activeCalMarkCategory || "examenes";
+    const catMetaCur = DAY_MARK_CATEGORIES[curCat] || DAY_MARK_CATEGORIES.examenes;
+
+    return `
+      <div class="cal-modal-section-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+          <label class="form-field-label" style="margin:0;">📌 Hitos de Programación (No suspenden clase)</label>
+          <span style="font-size:10.5px;color:var(--text-secondary);">Visibles en Semanal, Replicar y Calendario</span>
+        </div>
+
+        <div class="cal-mark-cat-row" role="group" aria-label="Categoría del hito">
+          ${Object.values(DAY_MARK_CATEGORIES).map(cat => `
+            <button type="button" id="cal-mark-cat-${cat.id}" class="cal-mark-cat-btn ${curCat === cat.id ? `active cat-${cat.id}` : ''}" aria-pressed="${curCat === cat.id ? 'true' : 'false'}" onclick="App.selectCalMarkCategory('${cat.id}')">
+              ${cat.icon} ${escapeHTML(cat.label)}
+            </button>
+          `).join("")}
+        </div>
+
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+          <input type="text" id="cal-mark-title-input" class="form-input" style="flex:1 1 180px;" aria-label="Título o descripción del hito" placeholder="Ej. ${escapeHTML(catMetaCur.defaultTitle)}..." oninput="this.dataset.userTyped='1'" />
+          <select id="cal-mark-scope-select" class="form-select" style="flex:0 1 185px;" aria-label="Alcance del hito en días">
+            <option value="day">Solo este día (${escapeHTML(dateStr)})</option>
+            <option value="week">Toda la semana (L-V)</option>
+            <option value="ribarroja_week">Solo Riba-roja (L/X)</option>
+            <option value="manises_week">Solo Manises (M/J)</option>
+          </select>
+          <button type="button" class="corporate-btn primary" onclick="App.addMarkFromCalendarModal()">+ Añadir</button>
+        </div>
+
+        ${dayMarks.length > 0 ? `
+          <div class="cal-mark-active-list">
+            ${dayMarks.map(m => {
+              const cm = DAY_MARK_CATEGORIES[m.category] || DAY_MARK_CATEGORIES.otro;
+              return `
+                <div class="cal-mark-active-item">
+                  <span class="day-mark-pill cat-${escapeHTML(m.category)}">${cm.icon} ${escapeHTML(m.title)}</span>
+                  <div style="display:flex;gap:4px;align-items:center;">
+                    <button type="button" class="corporate-btn" style="padding:2px 7px;font-size:10.5px;" onclick="App.removeMarkInModal('${escapeHTML(dateStr)}','${escapeHTML(m.id)}')" title="Quitar solo este día">✕ Día</button>
+                    <button type="button" class="corporate-btn" style="padding:2px 7px;font-size:10.5px;color:#b91c1c;" onclick="App.removeMarkWeekInModal('${escapeHTML(dateStr)}','${escapeHTML(m.id)}')" title="Quitar este hito de toda la semana">🗑️ Sem.</button>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        ` : `<div style="font-size:11px;color:var(--text-muted);">Sin hitos en este día todavía. Elige una categoría o escribe uno y pulsa "+ Añadir".</div>`}
+      </div>
+    `;
+  }
+
   function openCalendarDayModal(dateStr) {
     activeCalendarModalDate = dateStr;
-    const { school, groups } = getDayGroupsFromSchedule(dateStr);
+    activeCalMarkCategory = activeCalMarkCategory || "examenes";
+    activeCalMarkCreatorArmed = false;
+
+    const { groups } = getDayGroupsFromSchedule(dateStr);
     const isNoLectivo = !!(state.holidays && state.holidays[dateStr]) ||
       (state.calendarEvents[dateStr] && (state.calendarEvents[dateStr].type === "no_lectivo" || state.calendarEvents[dateStr].type === "festivo" || state.calendarEvents[dateStr].classesHeld === false));
     const calEv = state.calendarEvents[dateStr] || {};
@@ -3614,57 +3891,135 @@
     const body = document.getElementById("cal-modal-body");
 
     const modeVal = isNoLectivo ? "no_lectivo" : (calEv.type === "evento" ? "evento" : "lectivo");
+    const isFridayNoGroups = groups.length === 0;
 
     body.innerHTML = `
-      <div class="form-field-group">
-        <label class="form-field-label">1. Estado del Día</label>
-        <div class="modal-form-row-3col">
-          <button type="button" id="cal-opt-lectivo" class="conflict-option-btn" style="justify-content:center;font-weight:800;${modeVal === 'lectivo' ? 'border-color:var(--success);background:var(--success-soft);' : ''}" onclick="App.setCalModalMode('lectivo')">
-            🟢 Lectivo Normal
-          </button>
-          <button type="button" id="cal-opt-nolectivo" class="conflict-option-btn" style="justify-content:center;font-weight:800;${modeVal === 'no_lectivo' ? 'border-color:#f59e0b;background:#fef3c7;' : ''}" onclick="App.setCalModalMode('no_lectivo')">
-            🏖️ No Lectivo
-          </button>
-          <button type="button" id="cal-opt-evento" class="conflict-option-btn" style="justify-content:center;font-weight:800;${modeVal === 'evento' ? 'border-color:#a855f7;background:#f3e8ff;' : ''}" onclick="App.setCalModalMode('evento')">
-            🎪 Evento Especial
-          </button>
-        </div>
-      </div>
+      ${renderCalendarMarksModalSection(dateStr)}
 
-      <div id="cal-evento-details-box" style="display:${modeVal === 'lectivo' ? 'none' : 'flex'};flex-direction:column;gap:12px;">
+      ${!isFridayNoGroups ? `
         <div class="form-field-group">
-          <label class="form-field-label" for="cal-f-title">Motivo / Nombre del Festivo o Evento Especial</label>
-          <input type="text" id="cal-f-title" class="form-input" placeholder="Ej. Convivencia, DOMUND, Excursión, Exámenes, Festivo..." value="${escapeHTML(calEv.title || '')}" />
+          <label class="form-field-label">Estado Lectivo / Suspensión de Clases</label>
+          <div class="modal-form-row-3col">
+            <button type="button" id="cal-opt-lectivo" class="conflict-option-btn" style="justify-content:center;font-weight:800;${modeVal === 'lectivo' ? 'border-color:var(--success);background:var(--success-soft);' : ''}" onclick="App.setCalModalMode('lectivo')">
+              🟢 Lectivo Normal
+            </button>
+            <button type="button" id="cal-opt-nolectivo" class="conflict-option-btn" style="justify-content:center;font-weight:800;${modeVal === 'no_lectivo' ? 'border-color:#f59e0b;background:#fef3c7;' : ''}" onclick="App.setCalModalMode('no_lectivo')">
+              🏖️ No Lectivo
+            </button>
+            <button type="button" id="cal-opt-evento" class="conflict-option-btn" style="justify-content:center;font-weight:800;${modeVal === 'evento' ? 'border-color:#a855f7;background:#f3e8ff;' : ''}" onclick="App.setCalModalMode('evento')">
+              🎪 Evento Especial
+            </button>
+          </div>
         </div>
 
-        <div id="cal-groups-selector-wrap" class="form-field-group" style="display:${modeVal === 'evento' ? 'flex' : 'none'};">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
-            <label class="form-field-label">¿Qué grupos de este día NO tienen clase por el evento?</label>
-            <div style="display:flex;gap:4px;flex-wrap:wrap;">
-              <button type="button" class="filter-pill-btn" onclick="App.setAllCalModalGroups(true)">Suspender todos</button>
-              <button type="button" class="filter-pill-btn" onclick="App.setAllCalModalGroups(false)">Ninguno</button>
+        <div id="cal-evento-details-box" style="display:${modeVal === 'lectivo' ? 'none' : 'flex'};flex-direction:column;gap:12px;">
+          <div class="form-field-group">
+            <label class="form-field-label" for="cal-f-title">Motivo / Nombre del Festivo o Evento Especial</label>
+            <input type="text" id="cal-f-title" class="form-input" placeholder="Ej. Convivencia, DOMUND, Excursión, Festivo..." value="${escapeHTML(calEv.title || '')}" />
+          </div>
+
+          <div id="cal-groups-selector-wrap" class="form-field-group" style="display:${modeVal === 'evento' ? 'flex' : 'none'};">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+              <label class="form-field-label">¿Qué grupos de este día NO tienen clase por el evento?</label>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                <button type="button" class="filter-pill-btn" onclick="App.setAllCalModalGroups(true)">Suspender todos</button>
+                <button type="button" class="filter-pill-btn" onclick="App.setAllCalModalGroups(false)">Ninguno</button>
+              </div>
+            </div>
+            <div id="cal-groups-chips-list" class="modal-form-row-2col" style="margin-top:4px;">
+              ${groups.map(g => {
+                const checked = currentSuspended.includes(g.course);
+                return `
+                  <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;border:1px solid var(--border-medium);background:#fff;cursor:pointer;">
+                    <input type="checkbox" class="cal-grp-checkbox" value="${escapeHTML(g.course)}" ${checked ? "checked" : ""} />
+                    <div>
+                      <div style="font-weight:800;font-size:11.5px;">${escapeHTML(formatCourseShort(g.course))}</div>
+                      <div style="font-size:10px;color:var(--text-muted);">${g.time}</div>
+                    </div>
+                  </label>
+                `;
+              }).join("")}
             </div>
           </div>
-          <div id="cal-groups-chips-list" class="modal-form-row-2col" style="margin-top:4px;">
-            ${groups.map(g => {
-              const checked = currentSuspended.includes(g.course);
-              return `
-                <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;border:1px solid var(--border-medium);background:#fff;cursor:pointer;">
-                  <input type="checkbox" class="cal-grp-checkbox" value="${escapeHTML(g.course)}" ${checked ? "checked" : ""} />
-                  <div>
-                    <div style="font-weight:800;font-size:11.5px;">${escapeHTML(formatCourseShort(g.course))}</div>
-                    <div style="font-size:10px;color:var(--text-muted);">${g.time}</div>
-                  </div>
-                </label>
-              `;
-            }).join("")}
-          </div>
         </div>
-      </div>
+      ` : `
+        <div style="padding:8px 10px;border-radius:var(--radius-sm);background:#f8fafc;border:1px solid var(--border-subtle);font-size:11.5px;color:var(--text-secondary);">
+          ☕ <strong>Viernes de planificación docente:</strong> no hay sesiones de clase que suspender, pero puedes añadir hitos arriba para verlos en el Calendario, Semanal y Replicar Clases.
+        </div>
+      `}
     `;
 
     body.dataset.mode = modeVal;
     openModal("modal-calendar-event");
+  }
+
+  function selectCalMarkCategory(catId) {
+    if (!DAY_MARK_CATEGORIES[catId]) return;
+    activeCalMarkCategory = catId;
+    activeCalMarkCreatorArmed = true;
+
+    Object.keys(DAY_MARK_CATEGORIES).forEach(cid => {
+      const btn = document.getElementById(`cal-mark-cat-${cid}`);
+      if (!btn) return;
+      const isSelected = (cid === catId);
+      btn.className = `cal-mark-cat-btn ${isSelected ? `active cat-${cid}` : ""}`;
+      if (typeof btn.setAttribute === "function") {
+        btn.setAttribute("aria-pressed", isSelected ? "true" : "false");
+      }
+    });
+
+    const input = document.getElementById("cal-mark-title-input");
+    if (input) {
+      input.placeholder = `Ej. ${DAY_MARK_CATEGORIES[catId].defaultTitle}...`;
+      const allDefaults = Object.values(DAY_MARK_CATEGORIES).map(c => c.defaultTitle);
+      if (!input.value.trim() || (!input.dataset.userTyped && allDefaults.includes(input.value.trim()))) {
+        input.value = DAY_MARK_CATEGORIES[catId].defaultTitle;
+        input.dataset.userTyped = "";
+      }
+      input.focus();
+    }
+  }
+
+  function addMarkFromCalendarModal() {
+    if (!activeCalendarModalDate) return;
+    const cat = activeCalMarkCategory || "examenes";
+    const input = document.getElementById("cal-mark-title-input");
+    const scopeSel = document.getElementById("cal-mark-scope-select");
+    const titleVal = (input && input.value.trim()) || DAY_MARK_CATEGORIES[cat].defaultTitle;
+    const scopeVal = (scopeSel && scopeSel.value) || "day";
+
+    const added = addDayMarkWithScope(activeCalendarModalDate, cat, titleVal, scopeVal);
+    activeCalMarkCreatorArmed = false;
+    openCalendarDayModal(activeCalendarModalDate);
+    if (added > 0) {
+      showToast(`📌 Hito añadido en ${added} ${added === 1 ? "día" : "días"}`);
+    } else {
+      showToast("ℹ️ Ese hito ya estaba anotado en los días seleccionados");
+    }
+  }
+
+  function removeMarkInModal(dateStr, markId) {
+    removeDayMarkFromDay(dateStr, markId);
+    if (activeCalendarModalDate) {
+      openCalendarDayModal(activeCalendarModalDate);
+    }
+    showToast("🗑️ Hito eliminado del día");
+  }
+
+  function removeMarkWeekInModal(dateStr, categoryOrMarkId, title) {
+    let cat = categoryOrMarkId;
+    let resolvedTitle = title;
+    if (resolvedTitle === undefined) {
+      const targetMark = getDayMarks(dateStr).find(m => m.id === categoryOrMarkId);
+      if (!targetMark) return;
+      cat = targetMark.category;
+      resolvedTitle = targetMark.title;
+    }
+    const removed = removeDayMarkAcrossWeek(dateStr, cat, resolvedTitle);
+    if (activeCalendarModalDate) {
+      openCalendarDayModal(activeCalendarModalDate);
+    }
+    showToast(`🗑️ Hito eliminado de ${removed} ${removed === 1 ? "día" : "días"} de la semana`);
   }
 
   function setCalModalMode(mode) {
@@ -3707,12 +4062,27 @@
     const titleVal = (titleInput && titleInput.value.trim()) || "";
     const { school, groups } = getDayGroupsFromSchedule(dateStr);
 
+    // Si el usuario escribió o armó un hito sin pulsar "+ Añadir", guardarlo también
+    const markTitleInput = document.getElementById("cal-mark-title-input");
+    const markScopeSel = document.getElementById("cal-mark-scope-select");
+    const pendingMarkTitle = (markTitleInput && markTitleInput.value.trim()) || "";
+    const shouldSavePendingMark = !!pendingMarkTitle && (activeCalMarkCreatorArmed || markTitleInput.dataset.userTyped === "1");
+
+    if (groups.length === 0) {
+      if (shouldSavePendingMark) {
+        addDayMarkWithScope(dateStr, activeCalMarkCategory || "otro", pendingMarkTitle, (markScopeSel && markScopeSel.value) || "day");
+      }
+      activeCalMarkCreatorArmed = false;
+      closeModal("modal-calendar-event");
+      showToast("📌 Hitos guardados");
+      return;
+    }
+
     pushUndoSnapshot();
 
     if (mode === "lectivo") {
       delete state.holidays[dateStr];
       delete state.calendarEvents[dateStr];
-      showToast(`🟢 ${dateStr} establecido como Día Lectivo normal`);
     } else if (mode === "no_lectivo") {
       state.holidays[dateStr] = true;
       state.calendarEvents[dateStr] = {
@@ -3722,7 +4092,6 @@
         classesHeld: false,
         suspendedGroups: groups.map(g => g.course)
       };
-      showToast(`🏖️ ${dateStr} marcado como No Lectivo`);
     } else if (mode === "evento") {
       delete state.holidays[dateStr];
       const suspended = Array.from(document.querySelectorAll(".cal-grp-checkbox"))
@@ -3736,9 +4105,34 @@
         classesHeld: suspended.length === groups.length ? false : "partial",
         suspendedGroups: suspended
       };
-      showToast(`🎪 Evento especial guardado en ${dateStr} (${suspended.length} grupos sin clase)`);
     }
 
+    if (shouldSavePendingMark) {
+      const cat = DAY_MARK_CATEGORIES[activeCalMarkCategory] ? activeCalMarkCategory : "otro";
+      const dates = getTargetDatesForMarkScope(dateStr, (markScopeSel && markScopeSel.value) || "day");
+      if (!state.dayMarks) state.dayMarks = {};
+      dates.forEach((ds, idx) => {
+        const curList = getDayMarks(ds);
+        if (!curList.some(m => m.category === cat && m.title.toLowerCase() === pendingMarkTitle.toLowerCase())) {
+          curList.push({
+            id: `dm_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+            category: cat,
+            title: pendingMarkTitle
+          });
+          state.dayMarks[ds] = curList;
+        }
+      });
+      showToast("📌 Configuración del día e hito guardados");
+    } else if (mode === "lectivo") {
+      showToast(`🟢 ${dateStr} establecido como Día Lectivo normal`);
+    } else if (mode === "no_lectivo") {
+      showToast(`🏖️ ${dateStr} marcado como No Lectivo`);
+    } else if (mode === "evento") {
+      const suspLen = (state.calendarEvents[dateStr] && state.calendarEvents[dateStr].suspendedGroups.length) || 0;
+      showToast(`🎪 Evento especial guardado en ${dateStr} (${suspLen} grupos sin clase)`);
+    }
+
+    activeCalMarkCreatorArmed = false;
     closeModal("modal-calendar-event");
     persistAll(false);
     renderWorkspace();
@@ -4253,6 +4647,7 @@
       weeks: state.weeks,
       holidays: state.holidays,
       calendarEvents: state.calendarEvents,
+      dayMarks: state.dayMarks,
       sessionBank: state.sessionBank,
       reserveSessions: state.reserveSessions,
       tareas: state.tareas
@@ -4278,6 +4673,7 @@
         if (Array.isArray(data.weeks) && data.weeks.length === 44) state.weeks = data.weeks;
         if (data.holidays) state.holidays = data.holidays;
         if (data.calendarEvents) state.calendarEvents = data.calendarEvents;
+        if (data.dayMarks !== undefined) state.dayMarks = data.dayMarks || {};
         if (data.sessionBank) state.sessionBank = data.sessionBank;
         if (Array.isArray(data.reserveSessions)) state.reserveSessions = data.reserveSessions;
         if (data.tareas) state.tareas = data.tareas;
@@ -4331,6 +4727,7 @@
             if (Array.isArray(val.weeks) && val.weeks.length === 44) state.weeks = val.weeks;
             if (val.holidays) state.holidays = val.holidays;
             if (val.calendarEvents) state.calendarEvents = val.calendarEvents;
+            if (val.dayMarks !== undefined) state.dayMarks = val.dayMarks || {};
             if (val.sessionBank) state.sessionBank = val.sessionBank;
             state.lastUpdated = val.lastUpdated;
             renderWorkspace();
@@ -4382,6 +4779,7 @@
           weeks: state.weeks,
           holidays: state.holidays,
           calendarEvents: state.calendarEvents,
+          dayMarks: state.dayMarks,
           sessionBank: state.sessionBank,
           lastUpdated: ts
         });
@@ -4560,6 +4958,10 @@
     setAllCalModalGroups,
     saveCalendarDayConfig,
     clearCalendarDayConfig,
+    selectCalMarkCategory,
+    addMarkFromCalendarModal,
+    removeMarkInModal,
+    removeMarkWeekInModal,
 
     // Aplazar contenido y Reserva
     confirmPostponeAction,
