@@ -727,6 +727,50 @@
     return { isNoLectivo: false, reason: "", fromWeekVacaciones: false };
   }
 
+  function getSessionTypePillClass(sesionStr) {
+    const sLow = String(sesionStr || "").toLowerCase();
+    if (sLow.includes("no clase") || sLow.includes("sin clase") || sLow.includes("festivo") || sLow.includes("salida")) {
+      return "noclase";
+    }
+    if (sLow.includes("examen")) return "examen";
+    if (sLow.includes("exposic")) return "exposicion";
+    return "trabajo";
+  }
+
+  function isSessionTypeSuspended(sesionStr) {
+    const sLow = String(sesionStr || "").trim().toLowerCase();
+    return !!(
+      sesionStr === "Festivo" ||
+      sesionStr === "No Clase" ||
+      sesionStr === "Salida / Convivencia" ||
+      sLow.includes("no clase") ||
+      sLow.includes("sin clase") ||
+      sLow.includes("festivo") ||
+      sLow.includes("salida")
+    );
+  }
+
+  function syncCalendarDateNoClaseState(dateStr, suspendedCourseNamesOrAll) {
+    const wIdx = findWeekIndexByDate(dateStr);
+    if (wIdx === -1) return;
+    const { school, groups } = getDayGroupsFromSchedule(dateStr);
+    if (!school || !groups || groups.length === 0) return;
+
+    const suspendedSet = suspendedCourseNamesOrAll === "all"
+      ? new Set(groups.map(g => g.course))
+      : new Set(Array.isArray(suspendedCourseNamesOrAll) ? suspendedCourseNamesOrAll : []);
+
+    groups.forEach(g => {
+      const sess = ensureSessionObject(wIdx, school, g.course);
+      if (!sess) return;
+      if (suspendedSet.has(g.course)) {
+        sess.sesion = "No Clase";
+      } else if (sess.sesion === "No Clase" || sess.sesion === "Festivo") {
+        sess.sesion = "";
+      }
+    });
+  }
+
   function getGroupTeachingStatus(school, course, weekIdx) {
     const sched = getGroupScheduleInWeek(school, course, weekIdx);
     const week = state.weeks[weekIdx];
@@ -1982,11 +2026,7 @@
 
           if (session.sesion) {
             const pill = document.createElement("span");
-            const sLow = session.sesion.toLowerCase();
-            let pCls = "trabajo";
-            if (sLow.includes("examen")) pCls = "examen";
-            else if (sLow.includes("exposic")) pCls = "exposicion";
-            pill.className = `session-type-pill ${pCls}`;
+            pill.className = `session-type-pill ${getSessionTypePillClass(session.sesion)}`;
             pill.textContent = session.sesion;
             titleRow.appendChild(pill);
           }
@@ -2743,7 +2783,7 @@
 
               ${hasContent ? `
                 <div class="matrix-tema-title">
-                  ${session.sesion ? `<span class="session-type-pill ${session.sesion.toLowerCase().includes('examen') ? 'examen' : 'trabajo'}" style="margin-right:4px;">${escapeHTML(session.sesion)}</span>` : ""}
+                  ${session.sesion ? `<span class="session-type-pill ${getSessionTypePillClass(session.sesion)}" style="margin-right:4px;">${escapeHTML(session.sesion)}</span>` : ""}
                   ${escapeHTML(session.tema || "(Sin tema)")}
                 </div>
                 <div class="matrix-act-snippet">${escapeHTML(session.actividades || "")}</div>
@@ -2754,7 +2794,7 @@
                 </div>
               ` : `
                 <div style="color:var(--text-muted);font-size:10.5px;font-style:italic;margin:auto 0;text-align:center;">
-                  ${state.clipboard ? `<button type="button" class="corporate-btn" style="height:24px;font-size:10.5px;border-style:dashed;" onclick="App.pasteFromClipboard('${grp.school}','${grp.course}',${wIdx})">📥 Pegar clase aquí</button>` : "— Vacío —"}
+                  ${isSessionTypeSuspended(session.sesion) ? `<span class="session-type-pill ${getSessionTypePillClass(session.sesion)}" style="font-style:normal;">🚫 ${escapeHTML(session.sesion)}</span>` : (state.clipboard ? `<button type="button" class="corporate-btn" style="height:24px;font-size:10.5px;border-style:dashed;" onclick="App.pasteFromClipboard('${grp.school}','${grp.course}',${wIdx})">📥 Pegar clase aquí</button>` : "— Vacío —")}
                 </div>
               `}
             </div>
@@ -2963,7 +3003,7 @@
           <div class="bank-session-top">
             <div style="display:flex;align-items:center;gap:6px;">
               <span class="bank-session-num">S${globalSessionNum}</span>
-              ${sObj.sesion ? `<span class="session-type-pill ${sObj.sesion.toLowerCase().includes('examen') ? 'examen' : 'trabajo'}">${escapeHTML(sObj.sesion)}</span>` : ""}
+              ${sObj.sesion ? `<span class="session-type-pill ${getSessionTypePillClass(sObj.sesion)}">${escapeHTML(sObj.sesion)}</span>` : ""}
             </div>
             <div class="bank-session-actions">
               <button type="button" class="matrix-mini-btn" onclick="App.copyBankSessionToClipboard('${level}', ${tIdx}, ${sIdx})" title="Copiar al portapapeles de replicación (📋)">📋</button>
@@ -3256,6 +3296,7 @@
       } else {
         delete state.calendarEvents[dateStr];
       }
+      syncCalendarDateNoClaseState(dateStr, []);
       showToast(`🟢 ${dateStr} marcado como Día Lectivo`);
     } else {
       state.holidays[dateStr] = true;
@@ -3266,6 +3307,7 @@
         classesHeld: false,
         suspendedGroups: groups.map(g => g.course)
       };
+      syncCalendarDateNoClaseState(dateStr, "all");
       showToast(`🏖️ ${dateStr} marcado como Día No Lectivo`);
     }
     persistAll(false);
@@ -3906,6 +3948,9 @@
         const platformLabel = sMeta.platform || "Aula Virtual";
         const neaeVal = (state.tareas.neaeProfiles && state.tareas.neaeProfiles[grp.id]) || "";
         const noteVal = wData.notes[grp.id] || "";
+        const grpTeachStatus = getGroupTeachingStatus(grp.school, grp.course, weekIdx);
+        const grpSessObj = ensureSessionObject(weekIdx, grp.school, grp.course);
+        const isGrpNoClase = !grpTeachStatus.isLectivo || isSessionTypeSuspended(grpSessObj && grpSessObj.sesion);
 
         // 1. Material Base
         const matKey = `${grp.id}_mat`;
@@ -3926,8 +3971,9 @@
             <span class="center-badge school-themed" style="${sStyle}">${escapeHTML(sMeta.name)} (${escapeHTML(daysLabel)})</span>
           </td>
           <td class="col-group">
-            <div class="group-name-header">
+            <div class="group-name-header" style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
               <span class="group-name">${escapeHTML(grp.shortName)}</span>
+              ${isGrpNoClase ? `<span class="session-type-pill noclase" title="${escapeHTML(grpTeachStatus.reason || (grpSessObj && grpSessObj.sesion) || 'Sin clase')}">🚫 No clase</span>` : ""}
             </div>
             <textarea
               class="neae-textarea"
@@ -4604,6 +4650,21 @@
     s.imprimirDado = document.getElementById("edit-f-imprimir-dado").checked;
     s.preparada = prepared;
 
+    // Si en Semanal/Replicar se quita "No Clase", quitar también la suspensión parcial de ese grupo en el evento del Calendario
+    const sched = getGroupScheduleInWeek(school, course, weekIdx);
+    if (sched && sched.dateStr && state.calendarEvents && state.calendarEvents[sched.dateStr]) {
+      const ev = state.calendarEvents[sched.dateStr];
+      if (ev.type === "evento" && Array.isArray(ev.suspendedGroups) && !isSessionTypeSuspended(s.sesion)) {
+        ev.suspendedGroups = ev.suspendedGroups.filter(x => x !== course && x !== `${school}|${course}`);
+        const dayInfo = getDayGroupsFromSchedule(sched.dateStr);
+        if (ev.suspendedGroups.length === 0) {
+          ev.classesHeld = true;
+        } else if (dayInfo && dayInfo.groups && ev.suspendedGroups.length < dayInfo.groups.length) {
+          ev.classesHeld = "partial";
+        }
+      }
+    }
+
     closeModal("modal-edit-session");
     persistAll(false);
     renderWorkspace();
@@ -4909,6 +4970,7 @@
       } else {
         delete state.calendarEvents[dateStr];
       }
+      syncCalendarDateNoClaseState(dateStr, []);
     } else if (mode === "no_lectivo") {
       state.holidays[dateStr] = true;
       state.calendarEvents[dateStr] = {
@@ -4918,6 +4980,7 @@
         classesHeld: false,
         suspendedGroups: groups.map(g => g.course)
       };
+      syncCalendarDateNoClaseState(dateStr, "all");
     } else if (mode === "evento") {
       delete state.holidays[dateStr];
       const suspended = Array.from(document.querySelectorAll(".cal-grp-checkbox"))
@@ -4931,6 +4994,7 @@
         classesHeld: suspended.length === groups.length ? false : "partial",
         suspendedGroups: suspended
       };
+      syncCalendarDateNoClaseState(dateStr, suspended);
     }
 
     if (shouldSavePendingMark) {
@@ -4982,6 +5046,7 @@
     } else {
       delete state.calendarEvents[dateStr];
     }
+    syncCalendarDateNoClaseState(dateStr, []);
     closeModal("modal-calendar-event");
     persistAll(false);
     renderWorkspace();
