@@ -305,9 +305,9 @@ button {
   padding: 4px 10px;
   border-radius: var(--radius-sm);
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 700;
   color: #475569;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
   white-space: nowrap;
 }
 
@@ -323,9 +323,8 @@ button {
 .view-tab-btn.active {
   background: #ffffff;
   color: #0f172a;
-  font-weight: 800;
+  font-weight: 700;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  border: 1px solid #cbd5e1;
 }
 
 /* Navegador Compartido de Semana en Topbar (Bloqueado a tamaño constante) */
@@ -1791,10 +1790,25 @@ button {
   box-sizing: border-box;
 }
 
+.replicate-matrix-table tbody tr.matrix-group-row.school-themed th.sticky-group-row-hdr {
+  background: linear-gradient(90deg, var(--sch-soft, #ffffff) 0%, var(--sch-tint, #ffffff) 100%);
+  border-inline-start: 4px solid var(--sch-main, transparent);
+  border-block-end: 1px solid var(--sch-border, var(--border-light));
+}
+
+.replicate-matrix-table tbody tr.matrix-group-row.school-themed td.matrix-td,
+.replicate-matrix-table tbody tr.matrix-group-row.school-themed td.matrix-td.has-day-mark {
+  background: var(--sch-tint, var(--bg-surface));
+  background: color-mix(in srgb, var(--sch-soft, #ffffff) 52%, #ffffff);
+  border-block-end: 1px solid var(--sch-border, var(--border-light));
+}
+
+.replicate-matrix-table tbody tr.matrix-group-row.school-themed td.matrix-td.is-suspended-td,
 .replicate-matrix-table tbody td.matrix-td.is-suspended-td {
   background: #fffbeb;
 }
 
+.replicate-matrix-table tbody tr.matrix-group-row.school-themed td.matrix-td.is-copied-source,
 .replicate-matrix-table tbody td.matrix-td.is-copied-source {
   background: #eff6ff;
   box-shadow: inset 0 0 0 2px var(--primary);

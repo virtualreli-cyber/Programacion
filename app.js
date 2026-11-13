@@ -2632,6 +2632,8 @@
         const tr = document.createElement("tr");
         const sMeta = getSchoolMeta(grp.school);
         const sStyle = getSchoolStyleAttr(grp.school);
+        tr.className = `matrix-group-row school-themed ${grp.school}`;
+        tr.style.cssText = sStyle;
         const schBadge = `<span class="header-school-badge school-themed ${grp.school}" style="${sStyle}">${escapeHTML(sMeta.icon)} ${escapeHTML(sMeta.name)}</span>`;
 
         const rowTh = document.createElement("th");
