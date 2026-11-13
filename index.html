@@ -126,7 +126,7 @@
         <button type="button" class="clip-action-btn" onclick="App.pasteToAllSameLevelInCurrentWeek()" title="Pegar esta clase en todos los grupos del mismo nivel en la semana actual">
           ⚡ Pegar en todo el nivel (esta semana)
         </button>
-        <button type="button" class="clip-clear-btn" onclick="App.clearClipboard()" title="Limpiar portapapeles de replicación">✕ Cerrar</button>
+        <button type="button" class="clip-clear-btn" onclick="App.clearClipboard()" title="Cancelar copia/pega (Tecla Esc)">✕ Cerrar (Esc)</button>
       </div>
     </div>
 
@@ -376,6 +376,23 @@
       </div>
     </div>
   </div>
+
+  <!-- ======================================================================
+       DIÁLOGO NATIVO 11: CONFIRMAR ELIMINACIÓN DE SESIÓN (REPLICAR CLASES)
+       ====================================================================== -->
+  <dialog id="confirm-delete-session-dialog" class="native-confirm-dialog" aria-labelledby="confirm-del-title" closedby="closerequest">
+    <div class="modal-dialog-card" style="inline-size: min(460px, 94vw);">
+      <div class="modal-dialog-header">
+        <h2 id="confirm-del-title" class="modal-dialog-title">🗑️ Confirmar eliminación de sesión</h2>
+        <button type="button" class="modal-close-x" aria-label="Cerrar" onclick="App.cancelDeleteMatrixSession()">✕</button>
+      </div>
+      <div id="confirm-delete-session-body" class="modal-dialog-body"></div>
+      <div class="modal-dialog-footer">
+        <button type="button" id="btn-cancel-delete-session" class="corporate-btn" autofocus onclick="App.cancelDeleteMatrixSession()">Cancelar</button>
+        <button type="button" id="btn-confirm-delete-session" class="corporate-btn danger" onclick="App.confirmDeleteMatrixSession()">🗑️ Eliminar sesión</button>
+      </div>
+    </div>
+  </dialog>
 
   <!-- Toast de Notificación -->
   <div id="app-toast" class="toast-notification" role="status" aria-live="polite"></div>

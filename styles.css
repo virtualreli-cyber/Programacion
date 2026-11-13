@@ -1511,13 +1511,26 @@ button {
   color: #1e40af;
 }
 
-/* Tabla Matriz de Grupos x Semanas (Cabecera Sólida Pegada a la Barra Superior) */
+.corporate-btn.danger {
+  background: #ffe4e6;
+  border-color: #fda4af;
+  color: #be123c;
+  font-weight: 800;
+}
+
+.corporate-btn.danger:hover {
+  background: #fecdd3;
+  border-color: #fb7185;
+  color: #9f1239;
+}
+
+/* Tabla Matriz de Grupos x Semanas (Cabecera Sólida Pegada a la Barra Superior y Lateral a 0px Izq.) */
 .matrix-table-scroll {
   flex: 1;
   overflow: auto;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
-  padding: 0 14px 14px 14px;
+  padding: 0 14px 14px 0;
 }
 
 .replicate-matrix-table {
@@ -1529,7 +1542,8 @@ button {
   background: var(--bg-surface);
   border: 1px solid var(--border-medium);
   border-block-start: none;
-  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  border-inline-start: none;
+  border-radius: 0 0 var(--radius-md) 0;
   box-shadow: var(--shadow-xs);
 }
 
@@ -1553,8 +1567,10 @@ button {
 }
 
 .replicate-matrix-table thead th.sticky-group-col {
+  position: sticky;
+  inset-block-start: 0;
   inset-inline-start: 0;
-  z-index: 30;
+  z-index: 35;
   background: #e2e8f0;
   color: #0f172a;
   inline-size: 180px;
@@ -1562,6 +1578,7 @@ button {
   max-inline-size: 180px;
   box-sizing: border-box;
   border-inline-end: 2px solid #cbd5e1;
+  box-shadow: 2px 2px 6px -2px rgba(15, 23, 42, 0.12);
 }
 
 .replicate-matrix-table thead th.is-current-week-col {
@@ -1573,8 +1590,8 @@ button {
 .replicate-matrix-table tbody th.sticky-group-row-hdr {
   position: sticky;
   inset-inline-start: 0;
-  z-index: 10;
-  background: var(--bg-surface);
+  z-index: 15;
+  background: #ffffff;
   padding: 8px 10px;
   text-align: left;
   border-inline-end: 2px solid var(--border-medium);
@@ -1584,6 +1601,7 @@ button {
   min-inline-size: 180px;
   max-inline-size: 180px;
   box-sizing: border-box;
+  box-shadow: 2px 0 6px -2px rgba(15, 23, 42, 0.1);
 }
 
 .replicate-matrix-table tbody tr.level-divider-row td,
@@ -1596,6 +1614,12 @@ button {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   border-block-end: 1px solid var(--border-medium);
+}
+
+.level-divider-sticky-label {
+  position: sticky;
+  inset-inline-start: 10px;
+  display: inline-block;
 }
 
 .replicate-matrix-table tbody td.matrix-td {
@@ -1675,6 +1699,15 @@ button {
 
 .matrix-mini-btn.btn-paste-here:hover {
   background: #bfdbfe;
+}
+
+.matrix-mini-btn.btn-delete-session {
+  color: #be123c;
+}
+
+.matrix-mini-btn.btn-delete-session:hover {
+  background: #ffe4e6;
+  border-color: #fda4af;
 }
 
 .matrix-tema-title {
@@ -1887,13 +1920,24 @@ button {
   -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
-  padding: 12px 16px;
+  padding: 0 16px 14px 16px;
+}
+
+.cal-weekday-sticky-bar {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 25;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(170px, 1fr)) repeat(2, minmax(90px, 0.55fr));
+  min-inline-size: 1040px;
+  gap: 8px;
+  padding-block: 10px 8px;
+  background: var(--bg-app);
 }
 
 .cal-month-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(170px, 1fr)) repeat(2, minmax(90px, 0.55fr));
-  grid-template-rows: 32px;
   min-inline-size: 1040px;
   grid-auto-rows: 136px;
   gap: 8px;
@@ -2585,6 +2629,26 @@ button {
   display: flex;
 }
 
+.native-confirm-dialog {
+  margin: auto;
+  border: none;
+  padding: 0;
+  background: transparent;
+  max-inline-size: none;
+  max-block-size: none;
+}
+
+dialog:modal {
+  overscroll-behavior: contain;
+}
+
+dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(2px);
+}
+
 .modal-dialog-card {
   background: var(--bg-surface);
   border-radius: var(--radius-lg);
@@ -2792,7 +2856,11 @@ button {
     padding-block-start: 6px;
   }
 
-  .matrix-table-scroll,
+  .matrix-table-scroll {
+    -webkit-overflow-scrolling: touch;
+    padding-inline: 0 10px;
+  }
+
   .tareas-table-scroll {
     -webkit-overflow-scrolling: touch;
     padding-inline: 10px;
@@ -2922,7 +2990,7 @@ button {
   }
 
   .cal-grid-scroll {
-    padding: 8px 10px;
+    padding: 0 10px 10px 10px;
   }
 
   /* Modales a ancho completo y filas apiladas sin columnas estrechas */

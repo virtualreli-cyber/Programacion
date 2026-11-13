@@ -104,6 +104,7 @@
   let activeBankDeployContext = null;
   let activeBankEditContext = null;
   let activePostponeContext = null;
+  let pendingDeleteMatrixSession = null; // { school, course, weekIdx }
 
   // ==========================================================================
   // UTILIDADES GENERALES Y FECHAS
@@ -1711,7 +1712,7 @@
       // Fila separadora de Nivel
       const divTr = document.createElement("tr");
       divTr.className = "level-divider-row";
-      divTr.innerHTML = `<th colspan="${visibleWeeks.length + 1}">🎓 NIVEL ${escapeHTML(lvl)} (${groupsOfLevel.length} grupos)</th>`;
+      divTr.innerHTML = `<th colspan="${visibleWeeks.length + 1}"><span class="level-divider-sticky-label">🎓 NIVEL ${escapeHTML(lvl)} (${groupsOfLevel.length} grupos)</span></th>`;
       tbody.appendChild(divTr);
 
       groupsOfLevel.forEach(grp => {
@@ -1772,10 +1773,11 @@
                 <span class="matrix-date-tag">${escapeHTML(dateLabel)} ${session.preparada ? "✅" : ""}</span>
                 <div class="matrix-cell-actions">
                   <button type="button" class="matrix-mini-btn" onclick="App.copySessionToClipboard('${grp.school}','${grp.course}',${wIdx})" title="Copiar esta clase (📋)">📋</button>
-                  ${state.clipboard ? `<button type="button" class="matrix-mini-btn btn-paste-here" onclick="App.pasteFromClipboard('${grp.school}','${grp.course}',${wIdx})" title="Pegar aquí la clase copiada (📥)">📥 Pegar</button>` : ""}
+                  ${state.clipboard ? `<button type="button" class="matrix-mini-btn btn-paste-here" onclick="App.pasteFromClipboard('${grp.school}','${grp.course}',${wIdx})" title="Pegar aquí la clase copiada (📥)">📥</button>` : ""}
                   <button type="button" class="matrix-mini-btn" onclick="App.shiftCourseCascadeManual('${grp.school}','${grp.course}',${wIdx},-1)" title="Cascada -1 semana">⏪</button>
                   <button type="button" class="matrix-mini-btn" onclick="App.shiftCourseCascadeManual('${grp.school}','${grp.course}',${wIdx},1)" title="Cascada +1 semana">⏩</button>
                   <button type="button" class="matrix-mini-btn" onclick="App.openEditSessionModal('${grp.school}','${grp.course}',${wIdx})" title="Editar sesión (✏️)">✏️</button>
+                  ${hasContent || session.preparada ? `<button type="button" class="matrix-mini-btn btn-delete-session" onclick="App.requestDeleteMatrixSession('${grp.school}','${grp.course}',${wIdx})" title="Eliminar sesión (🗑️)">🗑️</button>` : ""}
                 </div>
               </div>
 
@@ -1823,6 +1825,91 @@
     state.currentWeekIndex = weekIdx;
     pasteToAllSameLevelInCurrentWeek();
     state.currentWeekIndex = prevW;
+  }
+
+  function requestDeleteMatrixSession(school, course, weekIdx) {
+    const sess = ensureSessionObject(weekIdx, school, course);
+    if (!hasSessionContent(sess) && !sess.preparada) {
+      showToast("ℹ️ Esta sesión ya está vacía");
+      return;
+    }
+
+    pendingDeleteMatrixSession = { school, course, weekIdx };
+    const schName = school === "ribarroja" ? "🔴 Riba-roja" : "🔵 Manises";
+    const wk = state.weeks[weekIdx] || {};
+    const body = document.getElementById("confirm-delete-session-body");
+    if (body) {
+      body.innerHTML = `
+        <div style="font-size:12.5px;color:var(--text-main);">
+          ¿Seguro que quieres eliminar esta sesión de <strong>${escapeHTML(formatCourseShort(course))} (${schName})</strong>?
+        </div>
+        <div style="padding:10px 12px;border-radius:8px;background:var(--danger-soft);border:1px solid var(--danger-border);">
+          <div style="font-size:10.5px;font-weight:800;color:#be123c;text-transform:uppercase;">
+            ${escapeHTML(wk.num_sem || `Semana ${weekIdx + 1}`)} · ${escapeHTML(wk.rango || "")}
+          </div>
+          <div style="font-size:13px;font-weight:800;color:var(--text-main);margin-top:3px;">
+            ${escapeHTML(sess.tema || "(Sin título)")}
+          </div>
+          ${sess.actividades ? `<div style="font-size:11.5px;color:var(--text-secondary);margin-top:4px;white-space:pre-line;">${escapeHTML(sess.actividades.slice(0, 160))}${sess.actividades.length > 160 ? "…" : ""}</div>` : ""}
+        </div>
+        <div style="font-size:11.5px;color:var(--text-secondary);">
+          La casilla quedará vacía. Como respaldo de seguridad, se guardará una copia en tu <strong>Cajón de Reserva 📦</strong> (y podrás usar <strong>↩️ Deshacer</strong>).
+        </div>
+      `;
+    }
+
+    const dlg = document.getElementById("confirm-delete-session-dialog");
+    if (dlg && typeof dlg.showModal === "function") {
+      dlg.showModal();
+    } else if (confirm(`¿Eliminar la sesión "${sess.tema || "Sin título"}" de ${formatCourseShort(course)} (${wk.num_sem || `Sem. ${weekIdx + 1}`})?`)) {
+      confirmDeleteMatrixSession();
+    } else {
+      pendingDeleteMatrixSession = null;
+    }
+  }
+
+  function cancelDeleteMatrixSession() {
+    pendingDeleteMatrixSession = null;
+    const dlg = document.getElementById("confirm-delete-session-dialog");
+    if (dlg && typeof dlg.close === "function" && dlg.open) {
+      dlg.close("cancel");
+    }
+  }
+
+  function confirmDeleteMatrixSession() {
+    if (!pendingDeleteMatrixSession) return;
+    const { school, course, weekIdx } = pendingDeleteMatrixSession;
+    pendingDeleteMatrixSession = null;
+
+    const dlg = document.getElementById("confirm-delete-session-dialog");
+    if (dlg && typeof dlg.close === "function" && dlg.open) {
+      dlg.close("confirm");
+    }
+
+    const existing = ensureSessionObject(weekIdx, school, course);
+    pushUndoSnapshot();
+    if (hasSessionContent(existing)) {
+      addSessionToReserve(school, course, weekIdx, existing, "Eliminada desde Replicar Clases");
+    }
+    state.weeks[weekIdx][school][course] = {
+      tema: "", actividades: "", avisos: "", avisoDado: false,
+      educamos: "", educamosDado: false, imprimir: "", imprimirDado: false,
+      sesion: "", preparada: false
+    };
+
+    if (
+      state.clipboard &&
+      state.clipboard.sourceSchool === school &&
+      state.clipboard.sourceCourse === course &&
+      state.clipboard.sourceWeekIdx === weekIdx
+    ) {
+      state.clipboard = null;
+      updateTopbarBadges();
+    }
+
+    persistAll(false);
+    renderWorkspace();
+    showToast(`🗑️ Sesión eliminada en ${formatCourseShort(course)} (copia en Reserva 📦)`);
   }
 
   // ==========================================================================
@@ -2031,10 +2118,7 @@
     const scroll = document.createElement("div");
     scroll.className = "cal-grid-scroll";
 
-    const grid = document.createElement("div");
-    grid.className = "cal-month-grid";
-
-    // Cabeceras Lunes a Domingo
+    // Cabeceras Lunes a Domingo en barra fija superior durante scroll vertical
     const headers = [
       { name: "LUNES", sub: "🔴 Riba-roja", cls: "ribarroja" },
       { name: "MARTES", sub: "🔵 Manises", cls: "manises" },
@@ -2044,12 +2128,18 @@
       { name: "SÁB", sub: "", cls: "" },
       { name: "DOM", sub: "", cls: "" }
     ];
+    const stickyBar = document.createElement("div");
+    stickyBar.className = "cal-weekday-sticky-bar";
     headers.forEach(h => {
       const hEl = document.createElement("div");
       hEl.className = `cal-weekday-hdr ${h.cls}`;
       hEl.innerHTML = `<span>${h.name}</span><span style="font-size:9.5px;opacity:0.85;">${h.sub}</span>`;
-      grid.appendChild(hEl);
+      stickyBar.appendChild(hEl);
     });
+    scroll.appendChild(stickyBar);
+
+    const grid = document.createElement("div");
+    grid.className = "cal-month-grid";
 
     const firstDow = new Date(year, month - 1, 1).getDay();
     const startCol = (firstDow === 0) ? 7 : firstDow;
@@ -4418,6 +4508,9 @@
     setClipboardPasteMode,
     pasteToAllSameLevelInCurrentWeek,
     pasteToLevelInWeek,
+    requestDeleteMatrixSession,
+    cancelDeleteMatrixSession,
+    confirmDeleteMatrixSession,
     shiftCourseCascadeManual,
     resolvePasteConflict,
     setMatrixScope(sc) { state.matrixScope = sc; renderWorkspace(); },
@@ -4522,7 +4615,21 @@
       e.preventDefault();
       redo();
     } else if (e.key === "Escape") {
-      document.querySelectorAll(".modal-backdrop.open").forEach(m => m.classList.remove("open"));
+      const openDialog = document.querySelector("dialog[open]");
+      if (openDialog) {
+        return;
+      }
+      const openModals = document.querySelectorAll(".modal-backdrop.open");
+      if (openModals && openModals.length > 0) {
+        openModals.forEach(m => m.classList.remove("open"));
+        activeConflictContext = null;
+        return;
+      }
+      if (state.clipboard) {
+        e.preventDefault();
+        clearClipboard();
+        showToast("✕ Copia/pega cancelado");
+      }
     }
   });
 
@@ -4533,6 +4640,15 @@
   });
 
   document.addEventListener("DOMContentLoaded", () => {
+    const delDlg = document.getElementById("confirm-delete-session-dialog");
+    if (delDlg && typeof delDlg.addEventListener === "function") {
+      delDlg.addEventListener("close", () => {
+        if (delDlg.returnValue !== "confirm") {
+          pendingDeleteMatrixSession = null;
+        }
+        delDlg.returnValue = "";
+      });
+    }
     loadInitialState();
     updateTopbarBadges();
     renderWorkspace();
