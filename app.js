@@ -777,7 +777,7 @@
     const session = (week && week[school] && week[school][course]) || {};
 
     if (!sched) {
-      return { isLectivo: true, reason: "", dateStr: "", sched: null };
+      return { isLectivo: false, type: "unscheduled", reason: "Sin sesión en horario", dateStr: "", sched: null };
     }
 
     const dateStr = sched.dateStr;
@@ -800,16 +800,7 @@
       }
     }
 
-    const sesStr = String(session.sesion || "").trim().toLowerCase();
-    if (
-      session.sesion === "Festivo" ||
-      session.sesion === "No Clase" ||
-      session.sesion === "Salida / Convivencia" ||
-      sesStr.includes("no clase") ||
-      sesStr.includes("sin clase") ||
-      sesStr.includes("festivo") ||
-      sesStr.includes("salida")
-    ) {
+    if (isSessionTypeSuspended(session.sesion)) {
       return { isLectivo: false, type: "evento", reason: session.tema || session.sesion, dateStr, sched };
     }
 
@@ -2209,7 +2200,8 @@
   // MOTOR DE REPLICACIÓN, CASCADA (+1 / -1) Y SEGURIDAD DE DATOS
   // ==========================================================================
 
-  function cloneCleanSession(src) {
+  function cloneCleanSession(src, clearSuspendedType = false) {
+    const rawSes = src.sesion || "";
     return {
       tema: src.tema || "",
       actividades: src.actividades || "",
@@ -2219,7 +2211,7 @@
       educamosDado: false,
       imprimir: src.imprimir || "",
       imprimirDado: false,
-      sesion: src.sesion || "",
+      sesion: (clearSuspendedType && isSessionTypeSuspended(rawSes)) ? "" : rawSes,
       preparada: !!src.preparada
     };
   }
@@ -2256,6 +2248,18 @@
     state.clipboardPasteMode = mode;
   }
 
+  function findNextTeachingWeek(school, course, startWeekIdx) {
+    const skipped = [];
+    for (let w = Math.max(0, startWeekIdx); w < state.weeks.length; w++) {
+      const st = getGroupTeachingStatus(school, course, w);
+      if (st.isLectivo) {
+        return { weekIdx: w, skipped };
+      }
+      skipped.push({ weekIdx: w, reason: st.reason || "Sin clase" });
+    }
+    return { weekIdx: -1, skipped };
+  }
+
   // Busca la próxima semana lectiva libre en la dirección indicada (+1 o -1)
   function findEmptyTeachingSlot(school, course, startWeekIdx, direction) {
     let w = startWeekIdx;
@@ -2271,20 +2275,21 @@
   }
 
   // Desplaza en cascada las sesiones lectivas de un curso (+1 hacia adelante o -1 hacia atrás)
-  // Saltando automáticamente las semanas no lectivas o con evento especial de ese grupo
+  // Saltando automáticamente las semanas no lectivas, vacaciones, festivos o marcadas como "No Clase"
   function executeCourseCascade(school, course, fromWeekIdx, direction, insertedSessionOrNull) {
     pushUndoSnapshot();
 
-    // Obtener índices de todas las semanas lectivas (o que ya tienen contenido) desde fromWeekIdx
+    const origSessionObj = ensureSessionObject(fromWeekIdx, school, course);
+    const origStatus = getGroupTeachingStatus(school, course, fromWeekIdx);
+    const origWasSuspended = !origStatus.isLectivo || isSessionTypeSuspended(origSessionObj.sesion);
+
+    // Obtener índices de todas las semanas lectivas en esa dirección (partiendo desde fromWeekIdx)
     const teachingWeeks = [];
     if (direction === 1) {
       for (let w = fromWeekIdx; w < state.weeks.length; w++) {
         const st = getGroupTeachingStatus(school, course, w);
-        const cur = ensureSessionObject(w, school, course);
-        if (st.isLectivo || w === fromWeekIdx || hasSessionContent(cur)) {
-          if (st.isLectivo || w === fromWeekIdx) {
-            teachingWeeks.push(w);
-          }
+        if (st.isLectivo || w === fromWeekIdx) {
+          teachingWeeks.push(w);
         }
       }
     } else {
@@ -2296,7 +2301,7 @@
       }
     }
 
-    if (teachingWeeks.length === 0) return;
+    if (teachingWeeks.length === 0) return { movedToWeek: -1, toReserve: false };
 
     // Buscar hasta el primer hueco libre en esa secuencia de semanas lectivas
     let stopIdxInList = teachingWeeks.findIndex((wIdx, pos) => {
@@ -2304,6 +2309,7 @@
       return !hasSessionContent(ensureSessionObject(wIdx, school, course));
     });
 
+    let sentToReserve = false;
     if (stopIdxInList === -1) {
       // No hay hueco libre antes del final/principio del curso: guardar última en Cajón de Reserva
       stopIdxInList = teachingWeeks.length - 1;
@@ -2311,6 +2317,7 @@
       const edgeSession = ensureSessionObject(edgeW, school, course);
       if (hasSessionContent(edgeSession)) {
         addSessionToReserve(school, course, edgeW, edgeSession, `Desplazada en cascada (${direction > 0 ? "+1" : "-1"}) al límite del calendario`);
+        sentToReserve = true;
       }
     }
 
@@ -2318,22 +2325,29 @@
     for (let i = stopIdxInList; i > 0; i--) {
       const targetW = teachingWeeks[i];
       const prevW = teachingWeeks[i - 1];
-      state.weeks[targetW][school][course] = cloneCleanSession(ensureSessionObject(prevW, school, course));
+      const prevObj = ensureSessionObject(prevW, school, course);
+      // Si el origen estaba marcado como "No Clase" / festivo / evento, no contaminar la semana destino lectiva
+      state.weeks[targetW][school][course] = cloneCleanSession(prevObj, prevW === fromWeekIdx && origWasSuspended);
     }
 
-    // En el origen (teachingWeeks[0] === fromWeekIdx), insertar la nueva o dejar vacío
+    // En el origen (teachingWeeks[0] === fromWeekIdx), insertar la nueva o dejar vacío (conservando "No Clase" si el día no es lectivo)
     if (insertedSessionOrNull) {
       state.weeks[fromWeekIdx][school][course] = cloneCleanSession(insertedSessionOrNull);
     } else {
       state.weeks[fromWeekIdx][school][course] = {
         tema: "", actividades: "", avisos: "", avisoDado: false,
         educamos: "", educamosDado: false, imprimir: "", imprimirDado: false,
-        sesion: "", preparada: false
+        sesion: origWasSuspended ? (origSessionObj.sesion || "No Clase") : "",
+        preparada: false
       };
     }
 
     persistAll(false);
     renderWorkspace();
+    return {
+      movedToWeek: teachingWeeks.length > 1 ? teachingWeeks[1] : -1,
+      toReserve: sentToReserve && teachingWeeks.length === 1
+    };
   }
 
   function shiftCourseCascadeManual(school, course, weekIdx, direction) {
@@ -2343,15 +2357,29 @@
         showToast("ℹ️ Esta sesión ya está vacía");
         return;
       }
-      executeCourseCascade(school, course, weekIdx, 1, null);
-      showToast(`⏩ Clases de ${formatCourseShort(course)} desplazadas +1 semana lectiva`);
+      const res = executeCourseCascade(school, course, weekIdx, 1, null);
+      if (res && res.toReserve) {
+        showToast(`📦 Sin más días lectivos en el curso: ${formatCourseShort(course)} guardada en Reserva`);
+      } else if (res && res.movedToWeek !== -1) {
+        const skippedCount = res.movedToWeek - weekIdx - 1;
+        const skipTxt = skippedCount > 0 ? ` (saltando ${skippedCount} ${skippedCount === 1 ? "semana" : "semanas"} sin clase)` : "";
+        showToast(`⏩ ${formatCourseShort(course)} pasada a Semana ${res.movedToWeek + 1}${skipTxt}`);
+      } else {
+        showToast(`⏩ Clases de ${formatCourseShort(course)} desplazadas a la siguiente sesión lectiva`);
+      }
     } else {
       // Retroceder -1 semana: traer las clases posteriores una semana antes o mover hacia atrás
       const prevFree = findEmptyTeachingSlot(school, course, weekIdx - 1, -1);
       if (prevFree !== -1 && hasSessionContent(cur)) {
-        executeCourseCascade(school, course, weekIdx, -1, null);
-        showToast(`⏪ Clase desplazada hacia atrás (-1 sem)`);
+        const res = executeCourseCascade(school, course, weekIdx, -1, null);
+        const destTxt = (res && res.movedToWeek !== -1) ? ` a Sem. ${res.movedToWeek + 1}` : "";
+        showToast(`⏪ Clase desplazada hacia atrás${destTxt}`);
       } else {
+        const curStatus = getGroupTeachingStatus(school, course, weekIdx);
+        if (!curStatus.isLectivo && !hasSessionContent(cur)) {
+          showToast("⚠️ No se puede adelantar una clase a un día marcado sin clase");
+          return;
+        }
         // Tirar de las clases futuras hacia esta semana
         pushUndoSnapshot();
         if (hasSessionContent(cur)) {
@@ -2365,7 +2393,7 @@
         for (let i = 0; i < futureTeaching.length - 1; i++) {
           const wCurr = futureTeaching[i];
           const wNext = futureTeaching[i + 1];
-          state.weeks[wCurr][school][course] = cloneCleanSession(ensureSessionObject(wNext, school, course));
+          state.weeks[wCurr][school][course] = cloneCleanSession(ensureSessionObject(wNext, school, course), true);
         }
         const lastW = futureTeaching[futureTeaching.length - 1];
         state.weeks[lastW][school][course] = {
@@ -2375,7 +2403,7 @@
         };
         persistAll(false);
         renderWorkspace();
-        showToast(`⏪ Programación de ${formatCourseShort(course)} adelantada (-1 semana)`);
+        showToast(`⏪ Programación de ${formatCourseShort(course)} adelantada (-1 sesión lectiva)`);
       }
     }
   }
@@ -5430,37 +5458,56 @@
     const sess = ensureSessionObject(weekIdx, school, course);
     activePostponeContext = { school, course, weekIdx };
 
-    let nextTeachW = weekIdx + 1;
-    while (nextTeachW < state.weeks.length && !getGroupTeachingStatus(school, course, nextTeachW).isLectivo) {
-      nextTeachW++;
-    }
-    const targetWIdx = Math.min(nextTeachW, state.weeks.length - 1);
+    const nextRes = findNextTeachingWeek(school, course, weekIdx + 1);
+    const targetWIdx = nextRes.weekIdx;
+    const nextFreeWIdx = findEmptyTeachingSlot(school, course, weekIdx + 1, 1);
+    const skippedInfo = nextRes.skipped.length > 0
+      ? `Saltando automáticamente: ${nextRes.skipped.slice(0, 4).map(s => `Sem. ${s.weekIdx + 1} (${escapeHTML(s.reason)})`).join(", ")}${nextRes.skipped.length > 4 ? ` y ${nextRes.skipped.length - 4} más` : ""}.`
+      : "";
 
     const body = document.getElementById("postpone-modal-body");
     body.innerHTML = `
-      <div style="font-size:12px;color:var(--text-secondary);">
-        Origen: <strong>${escapeHTML(formatCourseShort(course))} · Semana ${weekIdx + 1}</strong> → Siguiente semana lectiva: <strong>Semana ${targetWIdx + 1}</strong> (${escapeHTML(state.weeks[targetWIdx].rango)})
+      <div style="font-size:12px;color:var(--text-secondary);line-height:1.45;">
+        Origen: <strong>${escapeHTML(formatCourseShort(course))} · Semana ${weekIdx + 1}</strong> →
+        ${targetWIdx !== -1
+          ? `Siguiente sesión posible: <strong>Semana ${targetWIdx + 1}</strong> (${escapeHTML(state.weeks[targetWIdx].rango)})`
+          : `<strong style="color:var(--danger);">Sin más semanas lectivas antes de fin de curso</strong>`}
+        ${skippedInfo ? `<div style="font-size:11px;color:#b45309;margin-top:3px;">🧭 ${skippedInfo}</div>` : ""}
       </div>
 
-      <div class="form-field-group">
-        <label class="form-field-label" for="postpone-f-text">Texto que quedó pendiente para añadir al inicio de la Semana ${targetWIdx + 1}</label>
-        <textarea id="postpone-f-text" class="form-textarea" style="min-block-size:90px;">${escapeHTML(sess.actividades || '')}</textarea>
-      </div>
+      ${targetWIdx !== -1 ? `
+        <div class="form-field-group">
+          <label class="form-field-label" for="postpone-f-text">Texto que quedó pendiente para añadir al inicio de la Semana ${targetWIdx + 1}</label>
+          <textarea id="postpone-f-text" class="form-textarea" style="min-block-size:90px;">${escapeHTML(sess.actividades || '')}</textarea>
+        </div>
+      ` : `<textarea id="postpone-f-text" style="display:none;"></textarea>`}
 
       <div style="display:flex;flex-direction:column;gap:8px;">
-        <button type="button" class="conflict-option-btn" onclick="App.confirmPostponeAction('append_pending', ${targetWIdx})">
-          <span style="font-size:18px;">📌</span>
-          <div>
-            <div style="font-weight:800;font-size:12.5px;">Añadir como «📌 PENDIENTE (Sem. ${weekIdx + 1})» en la Semana ${targetWIdx + 1}</div>
-            <div style="font-size:11px;color:var(--text-secondary);">Conserva lo que ya hubiera en la Semana ${targetWIdx + 1} y añade este bloque al principio.</div>
-          </div>
-        </button>
+        ${targetWIdx !== -1 ? `
+          <button type="button" class="conflict-option-btn" onclick="App.confirmPostponeAction('append_pending', ${targetWIdx})">
+            <span style="font-size:18px;">📌</span>
+            <div>
+              <div style="font-weight:800;font-size:12.5px;">Añadir como «📌 PENDIENTE (Sem. ${weekIdx + 1})» en la Semana ${targetWIdx + 1}</div>
+              <div style="font-size:11px;color:var(--text-secondary);">Conserva lo que ya hubiera en la Semana ${targetWIdx + 1} y añade este bloque al principio.</div>
+            </div>
+          </button>
+        ` : ""}
+
+        ${nextFreeWIdx !== -1 && nextFreeWIdx !== targetWIdx ? `
+          <button type="button" class="conflict-option-btn" onclick="App.confirmPostponeAction('move_single_free', ${nextFreeWIdx})">
+            <span style="font-size:18px;">🚚</span>
+            <div>
+              <div style="font-weight:800;font-size:12.5px;">Mover SOLO esta sesión al siguiente hueco lectivo libre (Semana ${nextFreeWIdx + 1})</div>
+              <div style="font-size:11px;color:var(--text-secondary);">Salta los días sin clase/vacaciones y las semanas ya ocupadas sin empujar el resto.</div>
+            </div>
+          </button>
+        ` : ""}
 
         <button type="button" class="conflict-option-btn" onclick="App.confirmPostponeAction('cascade_all', ${targetWIdx})">
           <span style="font-size:18px;">⏩</span>
           <div>
-            <div style="font-weight:800;font-size:12.5px;">Desplazar toda la sesión en cascada (+1 semana lectiva)</div>
-            <div style="font-size:11px;color:var(--text-secondary);">Empuja esta sesión y las siguientes una semana lectiva hacia adelante.</div>
+            <div style="font-weight:800;font-size:12.5px;">${targetWIdx !== -1 ? `Desplazar toda la sesión en cascada (+1 sesión lectiva → Sem. ${targetWIdx + 1})` : `Enviar sesión al Cajón de Reserva 📦`}</div>
+            <div style="font-size:11px;color:var(--text-secondary);">Empuja esta sesión y las siguientes a su próxima sesión lectiva (saltando No Clase, vacaciones y festivos).</div>
           </div>
         </button>
       </div>
@@ -5471,11 +5518,35 @@
   function confirmPostponeAction(mode, targetWIdx) {
     if (!activePostponeContext) return;
     const { school, course, weekIdx } = activePostponeContext;
-    const textVal = (document.getElementById("postpone-f-text").value || "").trim();
+    const textEl = document.getElementById("postpone-f-text");
+    const textVal = (textEl && textEl.value || "").trim();
     closeModal("modal-postpone-content");
 
     if (mode === "cascade_all") {
       shiftCourseCascadeManual(school, course, weekIdx, 1);
+      return;
+    }
+
+    if (targetWIdx < 0 || targetWIdx >= state.weeks.length) {
+      showToast("⚠️ No hay ninguna semana lectiva disponible más adelante en este curso");
+      return;
+    }
+
+    if (mode === "move_single_free") {
+      const currSess = ensureSessionObject(weekIdx, school, course);
+      const currSt = getGroupTeachingStatus(school, course, weekIdx);
+      const origWasSuspended = !currSt.isLectivo || isSessionTypeSuspended(currSess.sesion);
+      pushUndoSnapshot();
+      state.weeks[targetWIdx][school][course] = cloneCleanSession(currSess, origWasSuspended);
+      state.weeks[weekIdx][school][course] = {
+        tema: "", actividades: "", avisos: "", avisoDado: false,
+        educamos: "", educamosDado: false, imprimir: "", imprimirDado: false,
+        sesion: origWasSuspended ? (currSess.sesion || "No Clase") : "",
+        preparada: false
+      };
+      persistAll(false);
+      renderWorkspace();
+      showToast(`🚚 Clase de ${formatCourseShort(course)} movida a Semana ${targetWIdx + 1}`);
       return;
     }
 
