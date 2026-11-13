@@ -692,6 +692,41 @@
   }
 
   // Determina si un grupo concreto NO tiene clase un día/semana por No Lectivo, Fuera de curso o Evento Especial
+  function isDateExplicitlyLectivo(dateStr) {
+    const calEv = state.calendarEvents && state.calendarEvents[dateStr];
+    return !!(calEv && calEv.type === "lectivo" && calEv.classesHeld !== false);
+  }
+
+  function getDateNoLectivoInfo(dateStr, weekObj) {
+    const resolvedWeek = weekObj !== undefined ? weekObj : (() => {
+      const idx = findWeekIndexByDate(dateStr);
+      return idx !== -1 ? state.weeks[idx] : null;
+    })();
+    const isHoliday = !!(state.holidays && state.holidays[dateStr]);
+    const calEv = state.calendarEvents && state.calendarEvents[dateStr];
+    const evNoLectivo = !!(calEv && (
+      calEv.type === "no_lectivo" ||
+      calEv.type === "festivo" ||
+      calEv.type === "vacaciones" ||
+      calEv.classesHeld === false
+    ));
+    if (isHoliday || evNoLectivo) {
+      return {
+        isNoLectivo: true,
+        reason: (calEv && calEv.title) || "Día No Lectivo",
+        fromWeekVacaciones: false
+      };
+    }
+    if (resolvedWeek && resolvedWeek.tipo_sem === "Vacaciones" && !isDateExplicitlyLectivo(dateStr) && !(calEv && calEv.type === "evento")) {
+      return {
+        isNoLectivo: true,
+        reason: "Vacaciones escolares",
+        fromWeekVacaciones: true
+      };
+    }
+    return { isNoLectivo: false, reason: "", fromWeekVacaciones: false };
+  }
+
   function getGroupTeachingStatus(school, course, weekIdx) {
     const sched = getGroupScheduleInWeek(school, course, weekIdx);
     const week = state.weeks[weekIdx];
@@ -706,28 +741,19 @@
       return { isLectivo: false, type: "outside_course", reason: "Sin alumnado", dateStr, sched };
     }
 
-    const isHoliday = !!(state.holidays && state.holidays[dateStr]);
     const calEv = state.calendarEvents && state.calendarEvents[dateStr];
-
-    if (isHoliday) {
-      const title = (calEv && calEv.title) ? calEv.title : "Día No Lectivo";
-      return { isLectivo: false, type: "no_lectivo", reason: title, dateStr, sched };
+    const nlInfo = getDateNoLectivoInfo(dateStr, week);
+    if (nlInfo.isNoLectivo) {
+      return { isLectivo: false, type: "no_lectivo", reason: nlInfo.reason, dateStr, sched };
     }
 
     if (calEv) {
-      if (calEv.type === "no_lectivo" || calEv.type === "festivo" || calEv.type === "vacaciones" || calEv.classesHeld === false) {
-        return { isLectivo: false, type: "no_lectivo", reason: calEv.title || "Día No Lectivo", dateStr, sched };
-      }
       if (calEv.type === "evento" || calEv.type === "extraescolar" || calEv.type === "inusual" || calEv.classesHeld === "partial") {
         const susp = Array.isArray(calEv.suspendedGroups) ? calEv.suspendedGroups : [];
         if (susp.includes(course) || susp.includes(`${school}|${course}`)) {
           return { isLectivo: false, type: "evento", reason: calEv.title || "Evento especial", dateStr, sched };
         }
       }
-    }
-
-    if (week && week.tipo_sem === "Vacaciones") {
-      return { isLectivo: false, type: "no_lectivo", reason: "Vacaciones escolares", dateStr, sched };
     }
 
     const sesStr = String(session.sesion || "").trim().toLowerCase();
@@ -1794,8 +1820,8 @@
     days.forEach(day => {
       const isToday = (day.dateStr === todayStr);
       const isOutside = !!day.outsideCourse;
-      const isNoLectivo = !!(state.holidays && state.holidays[day.dateStr]) ||
-        (state.calendarEvents[day.dateStr] && (state.calendarEvents[day.dateStr].type === "no_lectivo" || state.calendarEvents[day.dateStr].type === "festivo" || state.calendarEvents[day.dateStr].classesHeld === false));
+      const nlInfo = getDateNoLectivoInfo(day.dateStr, week);
+      const isNoLectivo = nlInfo.isNoLectivo;
       const calEv = state.calendarEvents[day.dateStr];
       const hasSpecialEvent = !!(calEv && calEv.type === "evento");
       const dayMarks = getDayMarks(day.dateStr);
@@ -1824,7 +1850,7 @@
           </div>
         </div>
         ${isOutside ? `<div class="header-status-sub festivo">🏫 Fuera de periodo lectivo</div>` : ""}
-        ${!isOutside && isNoLectivo ? `<div class="header-status-sub festivo">🏖️ ${escapeHTML((calEv && calEv.title) || 'Día No Lectivo')}</div>` : ""}
+        ${!isOutside && isNoLectivo ? `<div class="header-status-sub festivo">🏖️ ${escapeHTML((calEv && calEv.title) || nlInfo.reason || 'Día No Lectivo')}</div>` : ""}
         ${!isOutside && !isNoLectivo && hasSpecialEvent ? `<div class="header-status-sub evento">🎪 ${escapeHTML(calEv.title || 'Evento especial')}</div>` : ""}
         ${dayMarks.length > 0 ? `
           <div class="week-hdr-marks">
@@ -1860,7 +1886,7 @@
 
     days.forEach(day => {
       const dayCol = document.createElement("div");
-      const isNoLectivo = !!(state.holidays && state.holidays[day.dateStr]) || !!day.outsideCourse;
+      const isNoLectivo = getDateNoLectivoInfo(day.dateStr, week).isNoLectivo || !!day.outsideCourse;
       const schCls = (!day.outsideCourse && day.school !== "libre") ? `school-themed ${day.school}` : "libre";
       const schStyle = (!day.outsideCourse && day.school !== "libre") ? getSchoolStyleAttr(day.school) : "";
       dayCol.className = `day-body-column ${schCls}` + (isNoLectivo ? " is-festivo" : "");
@@ -3109,13 +3135,12 @@
       const effectiveSchool = (!outsideCourse && cfgSchool && cfgSchool !== "libre") ? cfgSchool : "";
       const dayMarks = !isWeekend ? getDayMarks(dateStr) : [];
 
-      const isNoLectivo = !!(state.holidays && state.holidays[dateStr]) ||
-        (state.calendarEvents[dateStr] && (state.calendarEvents[dateStr].type === "no_lectivo" || state.calendarEvents[dateStr].type === "festivo" || state.calendarEvents[dateStr].classesHeld === false));
+      const weekObj = (wIdx !== -1) ? state.weeks[wIdx] : null;
+      const nlInfo = getDateNoLectivoInfo(dateStr, weekObj);
+      const isNoLectivo = nlInfo.isNoLectivo;
       const calEv = state.calendarEvents[dateStr];
       const hasSpecialEvent = !!(calEv && calEv.type === "evento");
       const suspendedList = (calEv && Array.isArray(calEv.suspendedGroups)) ? calEv.suspendedGroups : [];
-      const weekObj = (wIdx !== -1) ? state.weeks[wIdx] : null;
-      const isWeekVacaciones = !!(weekObj && weekObj.tipo_sem === "Vacaciones");
 
       const card = document.createElement("div");
       card.className = "cal-day-card" +
@@ -3166,7 +3191,7 @@
         `;
 
         if (isNoLectivo) {
-          bodyHtml += `<div class="cal-event-pill" style="background:#fef3c7;border-color:#fde68a;color:#92400e;">🏖️ ${escapeHTML((calEv && calEv.title) || "Día No Lectivo")}</div>`;
+          bodyHtml += `<div class="cal-event-pill" style="background:#fef3c7;border-color:#fde68a;color:#92400e;">🏖️ ${escapeHTML((calEv && calEv.title) || nlInfo.reason || "Día No Lectivo")}</div>`;
         } else if (hasSpecialEvent) {
           bodyHtml += `<div class="cal-event-pill">🎪 ${escapeHTML(calEv.title || "Evento especial")}</div>`;
         }
@@ -3189,7 +3214,7 @@
           );
           const teachStatus = (wIdx !== -1) ? getGroupTeachingStatus(school, g.course, wIdx) : { isLectivo: true };
           const evSusp = hasSpecialEvent && (suspendedList.includes(g.course) || suspendedList.includes(`${school}|${g.course}`));
-          const isSusp = isNoLectivo || isWeekVacaciones || evSusp || sessSuspended || (wIdx !== -1 && !teachStatus.isLectivo);
+          const isSusp = isNoLectivo || evSusp || sessSuspended || (wIdx !== -1 && !teachStatus.isLectivo);
           const suspTitle = isSusp ? `${g.course} (${g.time}) — Sin clase${teachStatus.reason ? ': ' + teachStatus.reason : ''}` : `${g.course} (${g.time})`;
           bodyHtml += `<span class="cal-grp-chip ${isSusp ? 'suspended' : ''}" title="${escapeHTML(suspTitle)}">${isSusp ? "🚫 " : ""}${escapeHTML(formatCourseShort(g.course))}</span>`;
         });
@@ -3214,20 +3239,30 @@
 
   function toggleDayNoLectivo(dateStr) {
     pushUndoSnapshot();
-    const isCurrentlyNoLectivo = !!(state.holidays && state.holidays[dateStr]) ||
-      (state.calendarEvents[dateStr] && (state.calendarEvents[dateStr].type === "no_lectivo" || state.calendarEvents[dateStr].type === "festivo" || state.calendarEvents[dateStr].classesHeld === false));
+    const wIdx = findWeekIndexByDate(dateStr);
+    const weekObj = wIdx !== -1 ? state.weeks[wIdx] : null;
+    const nlInfo = getDateNoLectivoInfo(dateStr, weekObj);
+    const { school, groups } = getDayGroupsFromSchedule(dateStr);
 
-    if (isCurrentlyNoLectivo) {
+    if (nlInfo.isNoLectivo) {
       delete state.holidays[dateStr];
-      delete state.calendarEvents[dateStr];
+      if (weekObj && weekObj.tipo_sem === "Vacaciones") {
+        state.calendarEvents[dateStr] = {
+          school: school || "ambos",
+          type: "lectivo",
+          title: "Día Lectivo Normal",
+          classesHeld: true
+        };
+      } else {
+        delete state.calendarEvents[dateStr];
+      }
       showToast(`🟢 ${dateStr} marcado como Día Lectivo`);
     } else {
-      const { school, groups } = getDayGroupsFromSchedule(dateStr);
       state.holidays[dateStr] = true;
       state.calendarEvents[dateStr] = {
         school: school || "ambos",
         type: "no_lectivo",
-        title: "Día No Lectivo",
+        title: (weekObj && weekObj.tipo_sem === "Vacaciones") ? "Vacaciones escolares" : "Día No Lectivo",
         classesHeld: false,
         suspendedGroups: groups.map(g => g.course)
       };
@@ -4660,8 +4695,8 @@
     activeCalMarkCreatorArmed = false;
 
     const { groups } = getDayGroupsFromSchedule(dateStr);
-    const isNoLectivo = !!(state.holidays && state.holidays[dateStr]) ||
-      (state.calendarEvents[dateStr] && (state.calendarEvents[dateStr].type === "no_lectivo" || state.calendarEvents[dateStr].type === "festivo" || state.calendarEvents[dateStr].classesHeld === false));
+    const nlInfo = getDateNoLectivoInfo(dateStr);
+    const isNoLectivo = nlInfo.isNoLectivo;
     const calEv = state.calendarEvents[dateStr] || {};
     const currentSuspended = isNoLectivo
       ? groups.map(g => g.course)
@@ -4695,7 +4730,7 @@
         <div id="cal-evento-details-box" style="display:${modeVal === 'lectivo' ? 'none' : 'flex'};flex-direction:column;gap:12px;">
           <div class="form-field-group">
             <label class="form-field-label" for="cal-f-title">Motivo / Nombre del Festivo o Evento Especial</label>
-            <input type="text" id="cal-f-title" class="form-input" placeholder="Ej. Convivencia, DOMUND, Excursión, Festivo..." value="${escapeHTML(calEv.title || '')}" />
+            <input type="text" id="cal-f-title" class="form-input" placeholder="Ej. Convivencia, DOMUND, Excursión, Festivo..." value="${escapeHTML(calEv.title || (nlInfo.fromWeekVacaciones ? nlInfo.reason : ''))}" />
           </div>
 
           <div id="cal-groups-selector-wrap" class="form-field-group" style="display:${modeVal === 'evento' ? 'flex' : 'none'};">
@@ -4862,7 +4897,18 @@
 
     if (mode === "lectivo") {
       delete state.holidays[dateStr];
-      delete state.calendarEvents[dateStr];
+      const wIdx = findWeekIndexByDate(dateStr);
+      const weekObj = wIdx !== -1 ? state.weeks[wIdx] : null;
+      if (weekObj && weekObj.tipo_sem === "Vacaciones") {
+        state.calendarEvents[dateStr] = {
+          school: school || "ambos",
+          type: "lectivo",
+          title: "Día Lectivo Normal",
+          classesHeld: true
+        };
+      } else {
+        delete state.calendarEvents[dateStr];
+      }
     } else if (mode === "no_lectivo") {
       state.holidays[dateStr] = true;
       state.calendarEvents[dateStr] = {
@@ -4921,8 +4967,21 @@
   function clearCalendarDayConfig() {
     if (!activeCalendarModalDate) return;
     pushUndoSnapshot();
-    delete state.holidays[activeCalendarModalDate];
-    delete state.calendarEvents[activeCalendarModalDate];
+    const dateStr = activeCalendarModalDate;
+    delete state.holidays[dateStr];
+    const wIdx = findWeekIndexByDate(dateStr);
+    const weekObj = wIdx !== -1 ? state.weeks[wIdx] : null;
+    if (weekObj && weekObj.tipo_sem === "Vacaciones") {
+      const { school } = getDayGroupsFromSchedule(dateStr);
+      state.calendarEvents[dateStr] = {
+        school: school || "ambos",
+        type: "lectivo",
+        title: "Día Lectivo Normal",
+        classesHeld: true
+      };
+    } else {
+      delete state.calendarEvents[dateStr];
+    }
     closeModal("modal-calendar-event");
     persistAll(false);
     renderWorkspace();
