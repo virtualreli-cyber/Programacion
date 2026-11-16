@@ -108,7 +108,9 @@
       longTermTasks: [],
       longTermState: {}
     },
-    lastUpdated: 0
+    lastUpdated: 0,
+    lastPlannerUpdated: 0,
+    lastTareasUpdated: 0
   };
 
   const undoStack = [];
@@ -1072,6 +1074,8 @@
         if (parsed.tareas) state.tareas = parsed.tareas;
         if (typeof parsed.currentWeekIndex === "number") state.currentWeekIndex = parsed.currentWeekIndex;
         state.lastUpdated = parsed.lastUpdated || 0;
+        state.lastPlannerUpdated = parsed.lastPlannerUpdated || state.lastUpdated;
+        state.lastTareasUpdated = parsed.lastTareasUpdated || state.lastUpdated;
       }
     } catch (e) {
       console.warn("Error leyendo almacenamiento unificado:", e);
@@ -1104,13 +1108,7 @@
     updateTopbarBadges();
   }
 
-  let saveTimer = null;
-  function persistAll(recordUndo = false) {
-    if (recordUndo) {
-      // Snapshot se guarda antes de mutar cuando se usa pushUndoSnapshot()
-    }
-    state.lastUpdated = Date.now();
-
+  function saveLocalStorageMirror() {
     try {
       // 1. Guardar estado unificado
       localStorage.setItem(STORAGE_KEY_UNIFIED, JSON.stringify({
@@ -1123,7 +1121,9 @@
         reserveSessions: state.reserveSessions,
         tareas: state.tareas,
         currentWeekIndex: state.currentWeekIndex,
-        lastUpdated: state.lastUpdated
+        lastUpdated: state.lastUpdated,
+        lastPlannerUpdated: state.lastPlannerUpdated,
+        lastTareasUpdated: state.lastTareasUpdated
       }));
 
       // 2. Mantener compatibilidad directa con claves de Planner y Control de Clases
@@ -1134,7 +1134,7 @@
         calendarEvents: state.calendarEvents,
         dayMarks: state.dayMarks,
         reserveSessions: state.reserveSessions,
-        lastUpdated: state.lastUpdated
+        lastUpdated: state.lastPlannerUpdated || state.lastUpdated
       }));
       localStorage.setItem(STORAGE_KEY_TAREAS_WEEKS, JSON.stringify(state.tareas.weeksData));
       localStorage.setItem(STORAGE_KEY_TAREAS_NEAE, JSON.stringify(state.tareas.neaeProfiles));
@@ -1143,7 +1143,19 @@
     } catch (e) {
       console.warn("Error guardando en localStorage:", e);
     }
+  }
 
+  let saveTimer = null;
+  function persistAll(recordUndo = false) {
+    if (recordUndo) {
+      // Snapshot se guarda antes de mutar cuando se usa pushUndoSnapshot()
+    }
+    const nowTs = Date.now();
+    state.lastUpdated = nowTs;
+    state.lastPlannerUpdated = nowTs;
+    state.lastTareasUpdated = nowTs;
+
+    saveLocalStorageMirror();
     updateTopbarBadges();
 
     clearTimeout(saveTimer);
@@ -4688,6 +4700,9 @@
   function closeModal(id) {
     const m = document.getElementById(id);
     if (m) m.classList.remove("open");
+    if (id === "modal-cloud-sync" && !CloudSync.user) {
+      sessionStorage.setItem("cloud_login_dismissed", "true");
+    }
   }
 
   // 1. Selector de las 44 Semanas
@@ -5772,38 +5787,156 @@
   // SINCRONIZACIÓN EN TIEMPO REAL CON FIREBASE (/planner_anual y /control_clases)
   // ==========================================================================
 
+  const CLOUD_EMAIL_STORAGE_KEY = "docente_cloud_email";
+
   const CloudSync = {
     db: null,
     auth: null,
+    user: null,
+    userEmail: null,
     plannerRef: null,
     tareasRef: null,
+    connectedRef: null,
+    plannerListener: null,
+    tareasListener: null,
+    connectedListener: null,
     status: "offline",
-    userEmail: null,
-    ignoreRemoteUntil: 0,
+    isConnected: false,
+    isRemoteApplying: false,
+    plannerLoaded: false,
+    tareasLoaded: false,
+    lastError: null,
 
     init() {
       try {
-        if (!window.firebase) return;
+        if (!window.firebase || typeof firebase.database !== "function" || typeof firebase.auth !== "function") {
+          this.lastError = "SDK de Firebase no disponible";
+          this.setStatus("offline");
+          return;
+        }
         const firebaseConfig = {
-          apiKey: "AIzaSyA2uP8iU2u8_A9v8T4X9y9p9L8M7N6O5P4",
+          apiKey: "AIzaSyDE1zrBr-rSZDOwJiRQ-ylRBWJ-FOWJqYE",
           authDomain: "mi-planner-clases.firebaseapp.com",
           databaseURL: "https://mi-planner-clases-default-rtdb.europe-west1.firebasedatabase.app",
           projectId: "mi-planner-clases",
-          storageBucket: "mi-planner-clases.appspot.com"
+          storageBucket: "mi-planner-clases.firebasestorage.app",
+          messagingSenderId: "937193939100",
+          appId: "1:937193939100:web:ce5d40ce7723832a7e0d59"
         };
         if (!firebase.apps.length) {
           firebase.initializeApp(firebaseConfig);
         }
+        this.auth = firebase.auth();
+        this.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
         this.db = firebase.database();
-        this.plannerRef = this.db.ref("planner_anual");
-        this.tareasRef = this.db.ref("control_clases");
-        this.setStatus("online");
 
-        this.plannerRef.on("value", (snap) => {
-          if (Date.now() < this.ignoreRemoteUntil) return;
-          const val = snap.val();
-          if (!val || !val.lastUpdated) return;
-          if (val.lastUpdated > state.lastUpdated) {
+        this.auth.onAuthStateChanged((user) => {
+          if (user) {
+            this.user = user;
+            this.userEmail = user.email || null;
+            this.lastError = null;
+            this.setStatus("syncing");
+            this.attachListeners();
+            this.refreshModalIfOpen();
+          } else {
+            this.detachListeners();
+            this.user = null;
+            this.userEmail = null;
+            this.plannerLoaded = false;
+            this.tareasLoaded = false;
+            this.isConnected = false;
+            this.setStatus("unauth");
+            if (document.getElementById("modal-cloud-sync")?.classList.contains("open")) {
+              renderCloudModalBody();
+            } else if (!sessionStorage.getItem("cloud_login_dismissed")) {
+              openCloudModal();
+            }
+          }
+        });
+      } catch (e) {
+        console.warn("Firebase en modo local:", e);
+        this.lastError = e?.message || "Error inicializando Firebase";
+        this.setStatus("offline");
+      }
+    },
+
+    detachListeners() {
+      if (this.plannerRef && this.plannerListener) {
+        this.plannerRef.off("value", this.plannerListener);
+      }
+      if (this.tareasRef && this.tareasListener) {
+        this.tareasRef.off("value", this.tareasListener);
+      }
+      if (this.connectedRef && this.connectedListener) {
+        this.connectedRef.off("value", this.connectedListener);
+      }
+      this.plannerListener = null;
+      this.tareasListener = null;
+      this.connectedListener = null;
+    },
+
+    refreshModalIfOpen() {
+      if (document.getElementById("modal-cloud-sync")?.classList.contains("open")) {
+        renderCloudModalBody();
+      }
+    },
+
+    safeRenderAfterRemote() {
+      updateTopbarBadges();
+      const activeTag = document.activeElement ? document.activeElement.tagName : "";
+      if (activeTag !== "INPUT" && activeTag !== "TEXTAREA") {
+        renderWorkspace();
+        updateTopbarBadges();
+      }
+    },
+
+    updateOnlineStatusFromState() {
+      if (!this.user) {
+        this.setStatus("unauth");
+        return;
+      }
+      if (this.lastError || !this.isConnected) {
+        this.setStatus("offline");
+        return;
+      }
+      if (this.plannerLoaded && this.tareasLoaded) {
+        this.setStatus("online");
+      } else {
+        this.setStatus("syncing");
+      }
+    },
+
+    attachListeners() {
+      if (!this.db || !this.user) return;
+      this.detachListeners();
+
+      this.connectedRef = this.db.ref(".info/connected");
+      this.connectedListener = (snap) => {
+        this.isConnected = !!snap.val();
+        this.updateOnlineStatusFromState();
+        this.refreshModalIfOpen();
+      };
+      this.connectedRef.on("value", this.connectedListener);
+
+      this.plannerRef = this.db.ref("planner_anual");
+      this.tareasRef = this.db.ref("control_clases");
+
+      this.plannerListener = (snap) => {
+        this.plannerLoaded = true;
+        this.lastError = null;
+        const val = snap.val();
+        if (!val) {
+          this.pushPlanner(state.lastPlannerUpdated || Date.now());
+          this.updateOnlineStatusFromState();
+          this.refreshModalIfOpen();
+          return;
+        }
+        const remoteTs = Number(val.lastUpdated || 0);
+        const localTs = Number(state.lastPlannerUpdated || 0);
+
+        if (remoteTs > localTs) {
+          this.isRemoteApplying = true;
+          try {
             if (val.courseConfig) {
               state.courseConfig = normalizeCourseConfig(val.courseConfig);
               rebuildDerivedGroups();
@@ -5816,17 +5949,44 @@
             if (val.calendarEvents) state.calendarEvents = val.calendarEvents;
             if (val.dayMarks !== undefined) state.dayMarks = val.dayMarks || {};
             if (val.sessionBank) state.sessionBank = val.sessionBank;
-            state.lastUpdated = val.lastUpdated;
-            renderWorkspace();
-            updateTopbarBadges();
+            if (Array.isArray(val.reserveSessions)) state.reserveSessions = val.reserveSessions;
+            state.lastPlannerUpdated = remoteTs;
+            state.lastUpdated = Math.max(Number(state.lastUpdated || 0), remoteTs);
+            saveLocalStorageMirror();
+            this.safeRenderAfterRemote();
+          } finally {
+            this.isRemoteApplying = false;
           }
-        });
+        } else if (localTs > remoteTs + 1500 && localTs > 0) {
+          this.pushPlanner(localTs);
+        }
 
-        this.tareasRef.on("value", (snap) => {
-          if (Date.now() < this.ignoreRemoteUntil) return;
-          const val = snap.val();
-          if (!val || !val.lastUpdated) return;
-          if (val.lastUpdated > state.lastUpdated) {
+        this.updateOnlineStatusFromState();
+        this.refreshModalIfOpen();
+      };
+      this.plannerRef.on("value", this.plannerListener, (err) => {
+        console.error("[CloudSync] Error lectura /planner_anual:", err);
+        this.lastError = err?.code || err?.message || "Sin permisos de lectura (/planner_anual)";
+        this.setStatus("offline");
+        this.refreshModalIfOpen();
+      });
+
+      this.tareasListener = (snap) => {
+        this.tareasLoaded = true;
+        this.lastError = null;
+        const val = snap.val();
+        if (!val) {
+          this.pushTareas(state.lastTareasUpdated || Date.now());
+          this.updateOnlineStatusFromState();
+          this.refreshModalIfOpen();
+          return;
+        }
+        const remoteTs = Number(val.lastUpdated || 0);
+        const localTs = Number(state.lastTareasUpdated || 0);
+
+        if (remoteTs > localTs) {
+          this.isRemoteApplying = true;
+          try {
             if (val.weeksData) {
               if (Array.isArray(val.weeksData)) {
                 val.weeksData.forEach((item, i) => {
@@ -5839,65 +5999,194 @@
             if (val.neaeProfiles) state.tareas.neaeProfiles = val.neaeProfiles;
             if (Array.isArray(val.longTermTasks)) state.tareas.longTermTasks = val.longTermTasks;
             if (val.longTermState) state.tareas.longTermState = val.longTermState;
-            renderWorkspace();
-            updateTopbarBadges();
+            state.lastTareasUpdated = remoteTs;
+            state.lastUpdated = Math.max(Number(state.lastUpdated || 0), remoteTs);
+            saveLocalStorageMirror();
+            this.safeRenderAfterRemote();
+          } finally {
+            this.isRemoteApplying = false;
           }
-        });
-      } catch (e) {
-        console.warn("Firebase en modo local:", e);
+        } else if (localTs > remoteTs + 1500 && localTs > 0) {
+          this.pushTareas(localTs);
+        }
+
+        this.updateOnlineStatusFromState();
+        this.refreshModalIfOpen();
+      };
+      this.tareasRef.on("value", this.tareasListener, (err) => {
+        console.error("[CloudSync] Error lectura /control_clases:", err);
+        this.lastError = err?.code || err?.message || "Sin permisos de lectura (/control_clases)";
         this.setStatus("offline");
-      }
+        this.refreshModalIfOpen();
+      });
     },
 
     setStatus(st) {
       this.status = st;
       const dot = document.getElementById("cloud-status-dot");
-      if (!dot) return;
-      dot.className = "cloud-dot " + (st === "online" ? "online" : (st === "syncing" ? "syncing" : ""));
+      const btn = document.getElementById("btn-cloud-status");
+      if (dot) {
+        let cls = "cloud-dot";
+        if (st === "online") cls += " online";
+        else if (st === "syncing") cls += " syncing";
+        else if (st === "unauth") cls += " error";
+        dot.className = cls;
+      }
+      if (btn) {
+        if (st === "online") btn.title = `Sincronizado en tiempo real (${this.userEmail || "Firebase"})`;
+        else if (st === "syncing") btn.title = "Conectando / sincronizando con Firebase...";
+        else if (st === "unauth") btn.title = "Sesión no iniciada — Haz clic para conectar con Firebase";
+        else btn.title = `Modo local (${this.lastError || "sin conexión"})`;
+      }
     },
 
-    pushAll() {
-      if (!this.plannerRef || !this.tareasRef) return;
+    pushPlanner(ts) {
+      if (!this.user || !this.plannerRef) return Promise.resolve(false);
+      return this.plannerRef.update({
+        courseConfig: state.courseConfig,
+        weeks: state.weeks,
+        holidays: state.holidays,
+        calendarEvents: state.calendarEvents,
+        dayMarks: state.dayMarks,
+        sessionBank: state.sessionBank,
+        reserveSessions: state.reserveSessions,
+        lastUpdated: ts
+      });
+    },
+
+    pushTareas(ts) {
+      if (!this.user || !this.tareasRef) return Promise.resolve(false);
+      return this.tareasRef.update({
+        currentWeekIndex: state.currentWeekIndex,
+        weeksData: state.tareas.weeksData,
+        neaeProfiles: state.tareas.neaeProfiles,
+        longTermTasks: state.tareas.longTermTasks,
+        longTermState: state.tareas.longTermState,
+        lastUpdated: ts
+      });
+    },
+
+    pushAll(force = false) {
+      if (!this.user || !this.plannerRef || !this.tareasRef) {
+        if (force) {
+          openCloudModal();
+          showToast("🔒 Inicia sesión con tu cuenta de Firebase para sincronizar");
+        }
+        return false;
+      }
+      if (this.isRemoteApplying && !force) return false;
       try {
         this.setStatus("syncing");
-        this.ignoreRemoteUntil = Date.now() + 1800;
-        const ts = Date.now();
-        this.plannerRef.update({
-          courseConfig: state.courseConfig,
-          weeks: state.weeks,
-          holidays: state.holidays,
-          calendarEvents: state.calendarEvents,
-          dayMarks: state.dayMarks,
-          sessionBank: state.sessionBank,
-          lastUpdated: ts
-        });
-        this.tareasRef.update({
-          currentWeekIndex: state.currentWeekIndex,
-          weeksData: state.tareas.weeksData,
-          neaeProfiles: state.tareas.neaeProfiles,
-          longTermTasks: state.tareas.longTermTasks,
-          longTermState: state.tareas.longTermState,
-          lastUpdated: ts
-        }).then(() => {
-          this.setStatus("online");
-        }).catch(() => {
-          this.setStatus("offline");
-        });
+        const ts = force ? Date.now() : Number(state.lastUpdated || Date.now());
+        state.lastUpdated = ts;
+        state.lastPlannerUpdated = ts;
+        state.lastTareasUpdated = ts;
+        saveLocalStorageMirror();
+
+        Promise.all([this.pushPlanner(ts), this.pushTareas(ts)])
+          .then(() => {
+            this.lastError = null;
+            this.setStatus("online");
+            this.refreshModalIfOpen();
+            if (force) showToast("☁️ Sincronización completada con Firebase");
+          })
+          .catch((err) => {
+            console.error("[CloudSync] Error guardando en Firebase:", err);
+            this.lastError = err?.code || err?.message || "Error al guardar";
+            this.setStatus("offline");
+            this.refreshModalIfOpen();
+            if (force) showToast("⚠️ No se pudo guardar en Firebase: " + this.lastError);
+          });
+        return true;
       } catch (e) {
+        this.lastError = e?.message || "Error al sincronizar";
         this.setStatus("offline");
+        return false;
       }
+    },
+
+    login(email, pass) {
+      if (!this.auth) {
+        return Promise.reject(new Error("Firebase Auth no está disponible."));
+      }
+      return this.auth.signInWithEmailAndPassword(email, pass).then(() => {
+        localStorage.setItem(CLOUD_EMAIL_STORAGE_KEY, email);
+        sessionStorage.removeItem("cloud_login_dismissed");
+      });
+    },
+
+    logout() {
+      if (!this.auth) return Promise.resolve();
+      sessionStorage.setItem("cloud_login_dismissed", "true");
+      return this.auth.signOut();
     }
   };
 
-  function openCloudModal() {
+  function renderCloudModalBody() {
     const body = document.getElementById("cloud-modal-body");
+    if (!body) return;
+
+    if (!CloudSync.user) {
+      const savedEmail = localStorage.getItem(CLOUD_EMAIL_STORAGE_KEY) || "virtual.reli@gmail.com";
+      body.innerHTML = `
+        <div style="padding:12px;border-radius:8px;background:var(--bg-subtle);border:1px solid var(--border-medium);font-size:12px;line-height:1.45;">
+          <div style="font-weight:800;margin-bottom:4px;">🔒 Conecta tu cuenta de Firebase</div>
+          <div style="color:var(--text-muted);">
+            Usa el mismo correo y contraseña de la web anterior (<code>mi-planner-clases</code>) para activar la sincronización en tiempo real entre dispositivos.
+          </div>
+        </div>
+
+        <form id="cloud-login-form" style="display:flex;flex-direction:column;gap:10px;" onsubmit="App.submitCloudLogin(event)">
+          <div class="form-field-group">
+            <label class="form-field-label" for="cloud-auth-email">Correo electrónico</label>
+            <input type="email" id="cloud-auth-email" class="form-input" autocomplete="username" value="${escapeHTML(savedEmail)}" required />
+          </div>
+          <div class="form-field-group">
+            <label class="form-field-label" for="cloud-auth-pass">Contraseña</label>
+            <input type="password" id="cloud-auth-pass" class="form-input" autocomplete="current-password" placeholder="Tu contraseña de Firebase" required />
+          </div>
+          <div id="cloud-auth-error" style="display:none;color:var(--danger);font-size:12px;font-weight:600;"></div>
+          <button type="submit" id="btn-cloud-login-submit" class="corporate-btn primary" style="justify-content:center;height:36px;">
+            🔐 Conectar Nube
+          </button>
+        </form>
+
+        <div style="border-top:1px solid var(--border-medium);padding-top:10px;display:flex;flex-direction:column;gap:8px;">
+          <button type="button" class="corporate-btn" style="justify-content:center;height:34px;" onclick="App.exportFullBackup()">
+            💾 Descargar Copia de Seguridad JSON Completa
+          </button>
+        </div>
+      `;
+      setTimeout(() => {
+        const passEl = document.getElementById("cloud-auth-pass");
+        if (passEl) passEl.focus();
+      }, 40);
+      return;
+    }
+
+    let statusLabel = "🟠 Guardado en almacenamiento local";
+    let statusColor = "var(--warning)";
+    if (CloudSync.status === "online") {
+      statusLabel = "🟢 Sincronizado en tiempo real";
+      statusColor = "var(--success)";
+    } else if (CloudSync.status === "syncing") {
+      statusLabel = "🔄 Conectando / Sincronizando...";
+      statusColor = "var(--warning)";
+    }
+
+    const errHtml = CloudSync.lastError
+      ? `<div style="margin-top:6px;font-size:11px;color:var(--danger);font-weight:600;">Detalle: ${escapeHTML(CloudSync.lastError)}</div>`
+      : "";
+
     body.innerHTML = `
       <div style="padding:12px;border-radius:8px;background:var(--bg-subtle);border:1px solid var(--border-medium);">
         <div style="font-size:11px;color:var(--text-muted);">Base de datos Realtime Database:</div>
         <div style="font-weight:800;font-size:12.5px;margin-top:2px;">mi-planner-clases (/planner_anual + /control_clases)</div>
-        <div style="margin-top:8px;font-weight:700;color:${CloudSync.status === 'online' ? 'var(--success)' : 'var(--warning)'};">
-          ${CloudSync.status === "online" ? "🟢 Sincronizado en tiempo real" : "🟠 Guardado en almacenamiento local"}
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">Sesión: <strong>${escapeHTML(CloudSync.userEmail || "")}</strong></div>
+        <div style="margin-top:8px;font-weight:700;color:${statusColor};">
+          ${statusLabel}
         </div>
+        ${errHtml}
       </div>
 
       <div style="display:flex;flex-direction:column;gap:8px;">
@@ -5907,8 +6196,68 @@
         <button type="button" class="corporate-btn" style="justify-content:center;height:34px;" onclick="App.exportFullBackup()">
           💾 Descargar Copia de Seguridad JSON Completa
         </button>
+        <button type="button" class="corporate-btn" style="justify-content:center;height:34px;color:var(--danger);border-color:var(--danger-border);" onclick="App.cloudLogout()">
+          🚪 Cerrar sesión de Firebase
+        </button>
       </div>
     `;
+  }
+
+  function submitCloudLogin(ev) {
+    if (ev) ev.preventDefault();
+    const emailEl = document.getElementById("cloud-auth-email");
+    const passEl = document.getElementById("cloud-auth-pass");
+    const errEl = document.getElementById("cloud-auth-error");
+    const btn = document.getElementById("btn-cloud-login-submit");
+
+    const email = emailEl ? emailEl.value.trim() : "";
+    const pass = passEl ? passEl.value : "";
+
+    if (!email || !pass) {
+      if (errEl) {
+        errEl.textContent = "Escribe tu correo y contraseña.";
+        errEl.style.display = "block";
+      }
+      return;
+    }
+
+    if (errEl) errEl.style.display = "none";
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Conectando...";
+    }
+
+    CloudSync.login(email, pass)
+      .then(() => {
+        showToast("🟢 Conectado a Firebase en tiempo real");
+      })
+      .catch((err) => {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "🔐 Conectar Nube";
+        }
+        if (errEl) {
+          let msg = "Error de conexión: " + (err?.message || "desconocido");
+          if (err?.code === "auth/invalid-credential" || err?.code === "auth/wrong-password" || err?.code === "auth/user-not-found") {
+            msg = "Correo o contraseña incorrectos. Revisa las credenciales de Firebase.";
+          } else if (err?.code === "auth/invalid-email") {
+            msg = "El formato de correo no es válido.";
+          }
+          errEl.textContent = msg;
+          errEl.style.display = "block";
+        }
+      });
+  }
+
+  function cloudLogout() {
+    CloudSync.logout().then(() => {
+      showToast("Sesión de Firebase cerrada (modo local)");
+      renderCloudModalBody();
+    });
+  }
+
+  function openCloudModal() {
+    renderCloudModalBody();
     openModal("modal-cloud-sync");
   }
 
@@ -7049,10 +7398,13 @@
     exportFullBackup,
     importFullBackup,
     openCloudModal,
+    submitCloudLogin,
+    cloudLogout,
     updateLiveCurrentTime,
     forceCloudPushNow() {
-      CloudSync.pushAll();
-      showToast("☁️ Sincronización enviada a Firebase");
+      if (CloudSync.pushAll(true)) {
+        showToast("☁️ Sincronizando con Firebase...");
+      }
     }
   };
 
@@ -7077,7 +7429,12 @@
       }
       const openModals = document.querySelectorAll(".modal-backdrop.open");
       if (openModals && openModals.length > 0) {
-        openModals.forEach(m => m.classList.remove("open"));
+        openModals.forEach(m => {
+          m.classList.remove("open");
+          if (m.id === "modal-cloud-sync" && !CloudSync.user) {
+            sessionStorage.setItem("cloud_login_dismissed", "true");
+          }
+        });
         activeConflictContext = null;
         return;
       }
