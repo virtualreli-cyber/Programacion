@@ -333,7 +333,7 @@ button {
   align-items: center;
   gap: 2px;
   background: #ffffff;
-  padding: 2px 3px;
+  padding: 2px 4px;
   border-radius: var(--radius-md);
   border: 1px solid #cbd5e1;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
@@ -368,18 +368,26 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 3px;
   block-size: 26px;
   min-block-size: 26px;
-  padding-inline: 5px;
+  padding-inline: 6px;
   border-radius: var(--radius-xs);
   border: 1px solid #cbd5e1;
   font-size: 10.5px;
   font-weight: 800;
   white-space: nowrap;
   flex-shrink: 0;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  transition: box-shadow 0.12s ease;
   user-select: none;
+}
+
+#btn-go-current-week {
+  margin-inline-start: auto;
+}
+
+#btn-go-next-week {
+  margin-inline-start: 2px;
 }
 
 .week-shortcut-btn:focus-visible {
@@ -449,9 +457,9 @@ button {
   justify-content: center;
   gap: 4px;
   padding: 3px 4px;
-  inline-size: 74px;
-  min-inline-size: 74px;
-  max-inline-size: 74px;
+  inline-size: 76px;
+  min-inline-size: 76px;
+  max-inline-size: 76px;
   block-size: 26px;
   border-radius: var(--radius-xs);
   background: #f8fafc;
@@ -3543,6 +3551,10 @@ dialog::backdrop {
     inline-size: auto;
     min-inline-size: 0;
     max-inline-size: none;
+  }
+
+  #btn-go-current-week {
+    margin-inline-start: 6px;
   }
 
   /* Reducir ancho de columna fija izquierda en tablas para dejar espacio de lectura en móvil */
