@@ -10,11 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261113n" />
-  <!-- Firebase SDK (Realtime Database + Auth) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <link rel="stylesheet" href="styles.css?v=20261125a" />
+  <!-- Firebase SDK Modular 11.4.0 se carga dinámicamente en CloudSync (con fallback compat automático para file://) -->
 </head>
 <body>
   <div class="app-shell">
@@ -80,13 +77,12 @@
         <!-- Selector compartido de Semana -->
         <div id="shared-week-nav" class="week-nav-cluster">
           <button type="button" class="icon-nav-btn" onclick="App.navigateWeek(-1)" title="Semana anterior (◀)">◀</button>
-          <button type="button" class="week-selector-pill" onclick="App.openWeekPickerModal()" title="Seleccionar semana del curso (1 a 44)">
+          <button type="button" class="week-selector-pill" id="btn-week-selector-pill" onclick="App.openWeekPickerModal()" title="Seleccionar semana del curso (1 a 44)">
             <span id="top-week-title">Semana 10</span>
-            <span id="top-week-range" class="week-range-sub">02/11 - 06/11</span>
           </button>
           <button type="button" class="icon-nav-btn" onclick="App.navigateWeek(1)" title="Semana siguiente (▶)">▶</button>
-          <button type="button" id="btn-go-current-week" class="icon-nav-btn" onclick="App.goToCurrentCalendarWeek()" title="Ir a la semana actual de hoy (📍)">📍</button>
-          <button type="button" id="btn-go-next-week" class="icon-nav-btn" onclick="App.goToNextCalendarWeek()" title="Ir a la próxima semana (⏩)">⏩</button>
+          <button type="button" id="btn-go-current-week" class="week-shortcut-btn current-week" onclick="App.goToCurrentCalendarWeek()" title="Ir a la semana actual de hoy (📍)">📍 Actual</button>
+          <button type="button" id="btn-go-next-week" class="week-shortcut-btn next-week" onclick="App.goToNextCalendarWeek()" title="Ir a la próxima semana (⏩)">⏩ Próxima</button>
         </div>
       </div>
 
@@ -424,6 +420,6 @@
 
   <!-- Scripts de Datos y Lógica de Aplicación -->
   <script src="data.js?v=20261113m"></script>
-  <script src="app.js?v=20261116a"></script>
+  <script src="app.js?v=20261125a"></script>
 </body>
 </html>

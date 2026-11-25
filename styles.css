@@ -331,9 +331,9 @@ button {
 .week-nav-cluster {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   background: #ffffff;
-  padding: 2px 4px;
+  padding: 2px 3px;
   border-radius: var(--radius-md);
   border: 1px solid #cbd5e1;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
@@ -348,13 +348,13 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  inline-size: 26px;
-  min-inline-size: 26px;
+  inline-size: 20px;
+  min-inline-size: 20px;
   block-size: 26px;
   min-block-size: 26px;
   border-radius: var(--radius-xs);
   color: #475569;
-  font-size: 12px;
+  font-size: 11px;
   transition: all 0.15s ease;
   flex-shrink: 0;
 }
@@ -364,27 +364,101 @@ button {
   color: #0f172a;
 }
 
-.icon-nav-btn.is-active-shortcut {
-  background: #eff6ff;
-  color: #2563eb;
-  border: 1px solid #bfdbfe;
+.week-shortcut-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  block-size: 26px;
+  min-block-size: 26px;
+  padding-inline: 5px;
+  border-radius: var(--radius-xs);
+  border: 1px solid #cbd5e1;
+  font-size: 10.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
+}
+
+.week-shortcut-btn:focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 1px;
+}
+
+.week-shortcut-btn.current-week {
+  background: #dbeafe;
+  color: #1e40af;
+  border-color: #60a5fa;
+}
+
+.week-shortcut-btn.current-week:hover {
+  background: #bfdbfe;
+  border-color: #2563eb;
+  color: #1e3a8a;
+}
+
+.week-shortcut-btn.next-week {
+  background: #f3e8ff;
+  color: #6b21a8;
+  border-color: #c084fc;
+}
+
+.week-shortcut-btn.next-week:hover {
+  background: #e9d5ff;
+  border-color: #7c3aed;
+  color: #581c87;
+}
+
+.week-shortcut-btn.current-week.is-active-shortcut {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #1d4ed8;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+
+.week-shortcut-btn.current-week.is-active-shortcut:hover {
+  background: #1d4ed8;
+  border-color: #1e40af;
+  color: #ffffff;
+}
+
+.week-shortcut-btn.next-week.is-active-shortcut {
+  background: #7c3aed;
+  color: #ffffff;
+  border-color: #6d28d9;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+
+.week-shortcut-btn.next-week.is-active-shortcut:hover {
+  background: #6d28d9;
+  border-color: #5b21b6;
+  color: #ffffff;
+}
+
+@media (forced-colors: active) {
+  .week-shortcut-btn.is-active-shortcut {
+    outline: 2px solid Highlight;
+  }
 }
 
 .week-selector-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 3px 8px;
-  inline-size: 156px;
-  min-inline-size: 156px;
-  max-inline-size: 156px;
+  gap: 4px;
+  padding: 3px 4px;
+  inline-size: 74px;
+  min-inline-size: 74px;
+  max-inline-size: 74px;
+  block-size: 26px;
   border-radius: var(--radius-xs);
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   color: #0f172a;
   font-size: 11.5px;
-  font-weight: 700;
+  font-weight: 800;
   white-space: nowrap;
   flex-shrink: 0;
 }

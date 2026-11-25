@@ -1170,24 +1170,29 @@
 
   function updateTopbarBadges() {
     updateCourseYearBadges();
-    // 1. Título y rango de semana actual
+    // 1. Título de semana actual (solo "Semana x")
     const w = state.weeks[state.currentWeekIndex] || state.weeks[0];
     const titleEl = document.getElementById("top-week-title");
-    const rangeEl = document.getElementById("top-week-range");
+    const pillBtn = document.getElementById("btn-week-selector-pill");
     const { currentIdx, nextIdx } = getNowCalendarInfo();
 
     if (titleEl && w) titleEl.textContent = w.num_sem;
-    if (rangeEl && w) {
-      let suffix = "";
-      if (state.currentWeekIndex === currentIdx) suffix = " · Hoy";
-      else if (state.currentWeekIndex === nextIdx) suffix = " · Próx";
-      rangeEl.textContent = `${w.rango}${suffix}`;
+    if (pillBtn && w) {
+      pillBtn.title = `Seleccionar semana del curso (${w.num_sem} · ${w.rango})`;
     }
 
     const btnCur = document.getElementById("btn-go-current-week");
     const btnNext = document.getElementById("btn-go-next-week");
-    if (btnCur) btnCur.classList.toggle("is-active-shortcut", state.currentWeekIndex === currentIdx);
-    if (btnNext) btnNext.classList.toggle("is-active-shortcut", state.currentWeekIndex === nextIdx);
+    const curW = state.weeks[currentIdx];
+    const nextW = state.weeks[nextIdx];
+    if (btnCur) {
+      btnCur.classList.toggle("is-active-shortcut", state.currentWeekIndex === currentIdx);
+      if (curW) btnCur.title = `Ir a la semana actual (${curW.num_sem} · ${curW.rango})`;
+    }
+    if (btnNext) {
+      btnNext.classList.toggle("is-active-shortcut", state.currentWeekIndex === nextIdx);
+      if (nextW) btnNext.title = `Ir a la próxima semana (${nextW.num_sem} · ${nextW.rango})`;
+    }
 
     // Mostrar u ocultar navegador de semana según la vista
     const weekNav = document.getElementById("shared-week-nav");
@@ -5788,18 +5793,29 @@
   // ==========================================================================
 
   const CLOUD_EMAIL_STORAGE_KEY = "docente_cloud_email";
+  const CLOUD_FIREBASE_CONFIG = {
+    apiKey: "AIzaSyDE1zrBr-rSZDOwJiRQ-ylRBWJ-FOWJqYE",
+    authDomain: "mi-planner-clases.firebaseapp.com",
+    databaseURL: "https://mi-planner-clases-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "mi-planner-clases",
+    storageBucket: "mi-planner-clases.firebasestorage.app",
+    messagingSenderId: "937193939100",
+    appId: "1:937193939100:web:ce5d40ce7723832a7e0d59"
+  };
 
   const CloudSync = {
     db: null,
     auth: null,
+    _backend: null,
+    _initPromise: null,
     user: null,
     userEmail: null,
     plannerRef: null,
     tareasRef: null,
     connectedRef: null,
-    plannerListener: null,
-    tareasListener: null,
-    connectedListener: null,
+    plannerUnsub: null,
+    tareasUnsub: null,
+    connectedUnsub: null,
     status: "offline",
     isConnected: false,
     isRemoteApplying: false,
@@ -5807,72 +5823,183 @@
     tareasLoaded: false,
     lastError: null,
 
-    init() {
-      try {
-        if (!window.firebase || typeof firebase.database !== "function" || typeof firebase.auth !== "function") {
-          this.lastError = "SDK de Firebase no disponible";
-          this.setStatus("offline");
-          return;
-        }
-        const firebaseConfig = {
-          apiKey: "AIzaSyDE1zrBr-rSZDOwJiRQ-ylRBWJ-FOWJqYE",
-          authDomain: "mi-planner-clases.firebaseapp.com",
-          databaseURL: "https://mi-planner-clases-default-rtdb.europe-west1.firebasedatabase.app",
-          projectId: "mi-planner-clases",
-          storageBucket: "mi-planner-clases.firebasestorage.app",
-          messagingSenderId: "937193939100",
-          appId: "1:937193939100:web:ce5d40ce7723832a7e0d59"
-        };
-        if (!firebase.apps.length) {
-          firebase.initializeApp(firebaseConfig);
-        }
-        this.auth = firebase.auth();
-        this.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
-        this.db = firebase.database();
+    loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = src;
+        s.async = false;
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    },
 
-        this.auth.onAuthStateChanged((user) => {
-          if (user) {
-            this.user = user;
-            this.userEmail = user.email || null;
-            this.lastError = null;
-            this.setStatus("syncing");
-            this.attachListeners();
-            this.refreshModalIfOpen();
-          } else {
-            this.detachListeners();
-            this.user = null;
-            this.userEmail = null;
-            this.plannerLoaded = false;
-            this.tareasLoaded = false;
-            this.isConnected = false;
-            this.setStatus("unauth");
-            if (document.getElementById("modal-cloud-sync")?.classList.contains("open")) {
-              renderCloudModalBody();
-            } else if (!sessionStorage.getItem("cloud_login_dismissed")) {
-              openCloudModal();
-            }
+    async createBackend() {
+      if (window.location.protocol !== "file:") {
+        try {
+          const [
+            { initializeApp, getApps, getApp },
+            { initializeAuth, getAuth, browserLocalPersistence, indexedDBLocalPersistence, setPersistence, onAuthStateChanged, signInWithEmailAndPassword, signOut },
+            { getDatabase, ref, onValue, set, update, goOnline }
+          ] = await Promise.all([
+            import("https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js"),
+            import("https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js"),
+            import("https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js")
+          ]);
+
+          const app = getApps().length ? getApp() : initializeApp(CLOUD_FIREBASE_CONFIG);
+          let auth;
+          try {
+            auth = initializeAuth(app, {
+              persistence: [browserLocalPersistence, indexedDBLocalPersistence]
+            });
+          } catch (e) {
+            auth = getAuth(app);
           }
-        });
-      } catch (e) {
-        console.warn("Firebase en modo local:", e);
-        this.lastError = e?.message || "Error inicializando Firebase";
-        this.setStatus("offline");
+          const db = getDatabase(app);
+
+          const wrapRef = (dbRef) => ({
+            on(eventType, cb, errCb) {
+              if (eventType === "value") return onValue(dbRef, cb, errCb);
+              return () => {};
+            },
+            set(val) { return set(dbRef, val); },
+            update(obj) { return update(dbRef, obj); }
+          });
+
+          return {
+            mode: "modular",
+            auth,
+            db,
+            setLocalPersistence: () => setPersistence(auth, browserLocalPersistence),
+            authStateReady: () => (typeof auth.authStateReady === "function" ? auth.authStateReady() : Promise.resolve()),
+            onAuthStateChanged: (cb) => onAuthStateChanged(auth, cb),
+            signInWithEmailAndPassword: (email, pass) => signInWithEmailAndPassword(auth, email, pass),
+            signOut: () => signOut(auth),
+            ref: (path) => wrapRef(ref(db, path)),
+            goOnline: () => { try { goOnline(db); } catch (e) {} }
+          };
+        } catch (modErr) {
+          console.warn("[CloudSync] No se pudo cargar SDK modular, usando fallback compat:", modErr);
+        }
       }
+
+      if (typeof firebase === "undefined") {
+        try {
+          await this.loadScript("https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js");
+          await this.loadScript("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js");
+          await this.loadScript("https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js");
+        } catch (compatErr) {
+          return null;
+        }
+      }
+      if (typeof firebase === "undefined" || typeof firebase.database !== "function" || typeof firebase.auth !== "function") {
+        return null;
+      }
+      if (!firebase.apps.length) {
+        firebase.initializeApp(CLOUD_FIREBASE_CONFIG);
+      }
+      const auth = firebase.auth();
+      const db = firebase.database();
+
+      const wrapCompatRef = (compatRef) => ({
+        on(eventType, cb, errCb) {
+          compatRef.on(eventType, cb, errCb);
+          return () => compatRef.off(eventType, cb);
+        },
+        set(val) { return compatRef.set(val); },
+        update(obj) { return compatRef.update(obj); }
+      });
+
+      return {
+        mode: "compat",
+        auth,
+        db,
+        setLocalPersistence: () => auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL),
+        authStateReady: () => (typeof auth.authStateReady === "function" ? auth.authStateReady() : Promise.resolve()),
+        onAuthStateChanged: (cb) => auth.onAuthStateChanged(cb),
+        signInWithEmailAndPassword: (email, pass) => auth.signInWithEmailAndPassword(email, pass),
+        signOut: () => auth.signOut(),
+        ref: (path) => wrapCompatRef(db.ref(path)),
+        goOnline: () => { try { db.goOnline(); } catch (e) {} }
+      };
+    },
+
+    init() {
+      if (this._initPromise) return this._initPromise;
+      this._initPromise = (async () => {
+        try {
+          const backend = await this.createBackend();
+          if (!backend) {
+            this.lastError = "SDK de Firebase no disponible";
+            this.setStatus("offline");
+            return;
+          }
+          this._backend = backend;
+          this.auth = backend.auth;
+          this.db = backend.db;
+
+          // Esperar a que Firebase Auth hidrate la sesión guardada (localStorage / IndexedDB)
+          // antes de evaluar onAuthStateChanged, evitando falsos cierres de sesión al cambiar de Space
+          await backend.authStateReady().catch(() => {});
+          await backend.setLocalPersistence().catch(() => {});
+          await backend.authStateReady().catch(() => {});
+
+          backend.onAuthStateChanged((user) => {
+            if (user) {
+              this.user = user;
+              this.userEmail = user.email || null;
+              this.lastError = null;
+              try { localStorage.removeItem("docente_cloud_dismissed"); } catch (e) {}
+              try { sessionStorage.removeItem("cloud_login_dismissed"); } catch (e) {}
+              this.setStatus("syncing");
+              this.attachListeners();
+              this.refreshModalIfOpen();
+            } else {
+              this.detachListeners();
+              this.user = null;
+              this.userEmail = null;
+              this.plannerLoaded = false;
+              this.tareasLoaded = false;
+              this.isConnected = false;
+              this.setStatus("unauth");
+              this.refreshModalIfOpen();
+            }
+          });
+        } catch (e) {
+          console.warn("Firebase en modo local:", e);
+          this.lastError = e?.message || "Error inicializando Firebase";
+          this.setStatus("offline");
+        }
+      })();
+      return this._initPromise;
+    },
+
+    async syncOnResume() {
+      if (!this._backend) return;
+      try {
+        await this._backend.authStateReady().catch(() => {});
+        const activeUser = this._backend.auth && this._backend.auth.currentUser;
+        if (activeUser && !this.user) {
+          this.user = activeUser;
+          this.userEmail = activeUser.email || null;
+          this.lastError = null;
+          this.setStatus("syncing");
+          this.attachListeners();
+          this.refreshModalIfOpen();
+        } else if (this.user && typeof this._backend.goOnline === "function") {
+          this._backend.goOnline();
+        }
+      } catch (e) {}
     },
 
     detachListeners() {
-      if (this.plannerRef && this.plannerListener) {
-        this.plannerRef.off("value", this.plannerListener);
-      }
-      if (this.tareasRef && this.tareasListener) {
-        this.tareasRef.off("value", this.tareasListener);
-      }
-      if (this.connectedRef && this.connectedListener) {
-        this.connectedRef.off("value", this.connectedListener);
-      }
-      this.plannerListener = null;
-      this.tareasListener = null;
-      this.connectedListener = null;
+      if (typeof this.plannerUnsub === "function") this.plannerUnsub();
+      if (typeof this.tareasUnsub === "function") this.tareasUnsub();
+      if (typeof this.connectedUnsub === "function") this.connectedUnsub();
+      this.plannerUnsub = null;
+      this.tareasUnsub = null;
+      this.connectedUnsub = null;
     },
 
     refreshModalIfOpen() {
@@ -5907,21 +6034,20 @@
     },
 
     attachListeners() {
-      if (!this.db || !this.user) return;
+      if (!this._backend || !this.user) return;
       this.detachListeners();
 
-      this.connectedRef = this.db.ref(".info/connected");
-      this.connectedListener = (snap) => {
+      this.connectedRef = this._backend.ref(".info/connected");
+      this.connectedUnsub = this.connectedRef.on("value", (snap) => {
         this.isConnected = !!snap.val();
         this.updateOnlineStatusFromState();
         this.refreshModalIfOpen();
-      };
-      this.connectedRef.on("value", this.connectedListener);
+      });
 
-      this.plannerRef = this.db.ref("planner_anual");
-      this.tareasRef = this.db.ref("control_clases");
+      this.plannerRef = this._backend.ref("planner_anual");
+      this.tareasRef = this._backend.ref("control_clases");
 
-      this.plannerListener = (snap) => {
+      this.plannerUnsub = this.plannerRef.on("value", (snap) => {
         this.plannerLoaded = true;
         this.lastError = null;
         const val = snap.val();
@@ -5963,15 +6089,14 @@
 
         this.updateOnlineStatusFromState();
         this.refreshModalIfOpen();
-      };
-      this.plannerRef.on("value", this.plannerListener, (err) => {
+      }, (err) => {
         console.error("[CloudSync] Error lectura /planner_anual:", err);
         this.lastError = err?.code || err?.message || "Sin permisos de lectura (/planner_anual)";
         this.setStatus("offline");
         this.refreshModalIfOpen();
       });
 
-      this.tareasListener = (snap) => {
+      this.tareasUnsub = this.tareasRef.on("value", (snap) => {
         this.tareasLoaded = true;
         this.lastError = null;
         const val = snap.val();
@@ -6012,8 +6137,7 @@
 
         this.updateOnlineStatusFromState();
         this.refreshModalIfOpen();
-      };
-      this.tareasRef.on("value", this.tareasListener, (err) => {
+      }, (err) => {
         console.error("[CloudSync] Error lectura /control_clases:", err);
         this.lastError = err?.code || err?.message || "Sin permisos de lectura (/control_clases)";
         this.setStatus("offline");
@@ -6105,20 +6229,25 @@
       }
     },
 
-    login(email, pass) {
-      if (!this.auth) {
-        return Promise.reject(new Error("Firebase Auth no está disponible."));
+    async login(email, pass) {
+      if (!this._backend) {
+        await this.init();
       }
-      return this.auth.signInWithEmailAndPassword(email, pass).then(() => {
-        localStorage.setItem(CLOUD_EMAIL_STORAGE_KEY, email);
-        sessionStorage.removeItem("cloud_login_dismissed");
-      });
+      if (!this._backend) {
+        throw new Error("Firebase Auth no está disponible.");
+      }
+      await this._backend.setLocalPersistence().catch(() => {});
+      await this._backend.signInWithEmailAndPassword(email, pass);
+      localStorage.setItem(CLOUD_EMAIL_STORAGE_KEY, email);
+      try { localStorage.removeItem("docente_cloud_dismissed"); } catch (e) {}
+      try { sessionStorage.removeItem("cloud_login_dismissed"); } catch (e) {}
     },
 
     logout() {
-      if (!this.auth) return Promise.resolve();
+      if (!this._backend) return Promise.resolve();
+      try { localStorage.setItem("docente_cloud_dismissed", "true"); } catch (e) {}
       sessionStorage.setItem("cloud_login_dismissed", "true");
-      return this.auth.signOut();
+      return this._backend.signOut();
     }
   };
 
@@ -7472,10 +7601,12 @@
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) {
       updateLiveCurrentTime();
+      CloudSync.syncOnResume();
     }
   });
 
   window.addEventListener("focus", () => {
     updateLiveCurrentTime();
+    CloudSync.syncOnResume();
   });
 })();
